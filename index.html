@@ -267,6 +267,49 @@
     overflow-y:auto;
   }
   #records-panel.show{ display:block; }
+  /* 현장 현황 패널 — records-panel과 완전히 동일한 오버레이 패턴 재사용.
+     검침 메인 화면(active-screen)은 이 패널 존재 자체를 모른다. */
+  #site-status-panel{
+    display:none; position:fixed; inset:0; z-index:30; background:var(--ink);
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 14px);
+    overflow-y:auto;
+  }
+  #site-status-panel.show{ display:block; }
+  .site-status-summary{
+    font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6;
+  }
+  .site-status-summary b{ color:var(--paper); }
+  .site-status-summary .warn{ color:var(--warm); font-weight:700; }
+  /* 그리드 뷰 — floor/unit이 확실할 때만 그려진다 */
+  .site-grid-wrap{ overflow-x:auto; padding-bottom:8px; }
+  .site-grid-header{ display:flex; gap:3px; margin:0 0 4px 34px; }
+  .site-grid-header span{ width:22px; flex-shrink:0; text-align:center; font-size:10px; color:var(--muted); }
+  .site-grid-row{ display:flex; align-items:center; gap:3px; margin-bottom:3px; }
+  .site-grid-floor-label{
+    width:30px; flex-shrink:0; font-size:10px; color:var(--muted); text-align:right; margin-right:4px;
+  }
+  .site-cell{
+    width:22px; height:22px; flex-shrink:0; border-radius:5px; border:none;
+    display:flex; align-items:center; justify-content:center; font-size:12px;
+    background:var(--panel-2); color:var(--muted); padding:0;
+  }
+  .site-cell.blank{ background:transparent; }
+  .site-cell.done{ background:rgba(95,217,122,0.16); color:var(--good); }
+  .site-cell.current{ background:var(--amber); color:#1a1400; font-weight:800; }
+  .site-cell.review{ background:rgba(255,122,86,0.2); color:var(--warm); }
+  /* 목록 폴백 — floor/unit을 못 구했을 때 (ho 파싱도 불확실한 경우) */
+  .site-list-item{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; font-size:13px; margin-bottom:6px;
+  }
+  .site-list-item .sl-ho{ font-weight:700; color:var(--paper); }
+  .site-list-status{ font-size:12px; font-weight:700; }
+  .site-list-status.pending{ color:var(--muted); }
+  .site-list-status.done{ color:var(--good); }
+  .site-list-status.current{ color:var(--amber); }
+  .site-list-status.review{ color:var(--warm); }
+  .site-fallback-note{ font-size:11px; color:var(--muted); margin-bottom:10px; }
   .records-head{
     display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
   }
@@ -400,6 +443,7 @@
   <div class="topbar" id="topbar" style="display:none;">
     <div class="dong"><span id="topbar-dong">현장</span><button class="btn-switch-site" id="btn-switch-site" type="button">현장 변경</button></div>
     <div style="display:flex; align-items:center; gap:8px;">
+      <button class="btn-switch-site" id="btn-open-sitestatus" type="button">현황</button>
       <button class="btn-switch-site" id="btn-open-records" type="button">기록</button>
       <div class="progress" id="progress">0 / 0</div>
     </div>
@@ -543,6 +587,28 @@
   </div>
 </div>
 
+<!-- 현장 현황 패널 — records-panel과 같은 오버레이 패턴. Navigation이 아니라 View다.
+     세대를 눌러도 진행 위치는 바뀌지 않는다 (읽기 전용 상세만 연다). -->
+<div id="site-status-panel">
+  <div class="records-head">
+    <h1>현장 현황</h1>
+    <button class="btn-close-records" id="btn-close-sitestatus">닫기</button>
+  </div>
+  <div class="site-status-summary" id="site-status-summary"></div>
+  <div id="site-status-body"></div>
+</div>
+
+<!-- 세대 상세 — 읽기 전용. keypad-overlay/copy-summary-body 스타일을 그대로 재사용 -->
+<div class="keypad-overlay" id="unit-detail-overlay">
+  <div class="keypad-sheet">
+    <div class="keypad-sheet-head">
+      <span id="unit-detail-title">세대 상세</span>
+      <button class="keypad-close" id="btn-unit-detail-close">닫기</button>
+    </div>
+    <div class="copy-summary-body" id="unit-detail-body"></div>
+  </div>
+</div>
+
 <!-- 복사 전 확인 오버레이 — 누락/확인필요가 있어도 조용히 복사되지 않는다 -->
 <div class="keypad-overlay" id="copy-summary-overlay">
   <div class="keypad-sheet">
@@ -610,7 +676,7 @@ function buildBuiltin202Preset(){
   for(let floor=20; floor>=1; floor--){
     for(let unit=8; unit>=1; unit--){
       const ho = String(floor) + String(unit).padStart(2, '0');
-      const u = { ho };
+      const u = { ho, floor: floor, unit: unit };
       if(sampleHistory[ho]) u.history = sampleHistory[ho];
       units.push(u);
     }
@@ -1782,6 +1848,162 @@ btnOpenRecords.addEventListener('click', async () => {
   await refreshOutputMappingStatus();
 });
 btnCloseRecords.addEventListener('click', () => { recordsPanel.classList.remove('show'); });
+
+// =====================================================================
+// 현장 현황 패널 — Preset.units + 이번 entries(log) + unit.history를 조합해서
+// 렌더링 시점에 파생하는 View다. 새로운 데이터 구조나 판정 로직을 만들지 않는다.
+// 세대를 눌러도 읽기 전용 상세만 열릴 뿐, idx(진행 위치)나 Field Order는
+// 절대 바뀌지 않는다 — 이 패널은 Navigation이 아니라 현장 현황 View다.
+// =====================================================================
+
+// floor/unit 명시 필드가 있으면 그게 source of truth.
+// 없을 때만 보조 수단으로 ho 문자열 파싱을 시도하되, 그 결과를 절대적인
+// 구조로 가정하지 않는다 — 파싱이 안 되는 세대가 하나라도 있으면
+// 전체를 그리드로 그리지 않고 목록형 폴백으로 넘어간다.
+function getUnitSpatialInfo(unit){
+  if(typeof unit.floor === 'number' && typeof unit.unit === 'number'){
+    return { floor: unit.floor, unitNo: unit.unit, certain: true };
+  }
+  const m = /^(\d+)(\d{2})$/.exec(String(unit.ho || ''));
+  if(m){
+    return { floor: parseInt(m[1], 10), unitNo: parseInt(m[2], 10), certain: false };
+  }
+  return null;
+}
+
+function computeSiteGrid(){
+  if(!currentPreset || !currentPreset.units || currentPreset.units.length === 0) return null;
+  const resolved = currentPreset.units.map(u => ({ unit: u, spatial: getUnitSpatialInfo(u) }));
+  if(resolved.some(r => !r.spatial)) return null; // 하나라도 위치 불확실 -> 그리드 포기
+  const floors = Array.from(new Set(resolved.map(r => r.spatial.floor))).sort((a,b) => b-a);
+  const unitNos = Array.from(new Set(resolved.map(r => r.spatial.unitNo))).sort((a,b) => a-b);
+  const cellMap = new Map();
+  resolved.forEach(r => cellMap.set(r.spatial.floor + '_' + r.spatial.unitNo, r.unit));
+  return { floors, unitNos, cellMap };
+}
+
+// 상태는 기존 log(entries)만으로 판단한다 — 새 판정 로직 없음.
+// meterType이 여러 개인 세대는, 전부 확정돼야 "완료"다.
+function getUnitStatus(ho, doneSet){
+  if(currentItem && currentItem.ho === ho) return 'current';
+  const types = (currentPreset.meterTypes || []);
+  const doneCount = types.filter(t => doneSet.has(ho + '_' + t)).length;
+  if(types.length > 0 && doneCount >= types.length) return 'done';
+  return 'pending';
+}
+
+function unitNeedsReview(ho){
+  return log.some(e => e.ho === ho && e.needsReview);
+}
+
+function renderSiteStatusPanel(){
+  const doneUnitCount = SEQUENCE.length ? Math.min(idx, SEQUENCE.length) : 0;
+  const reviewCount = log.filter(e => e.needsReview).length;
+  const summaryEl = document.getElementById('site-status-summary');
+  summaryEl.innerHTML =
+    '<b>' + (currentPreset ? currentPreset.name : '-') + '</b> · ' +
+    (idx >= SEQUENCE.length ? '완료' : (idx + 1) + ' / ' + SEQUENCE.length) +
+    (reviewCount > 0 ? ' · <span class="warn">확인 필요 ' + reviewCount + '건</span>' : ' · 확인 필요 0건');
+
+  const body = document.getElementById('site-status-body');
+  const doneSet = new Set(log.map(entryKey));
+  const grid = computeSiteGrid();
+
+  if(grid){
+    let html = '<div class="site-grid-wrap"><div class="site-grid-header">';
+    grid.unitNos.forEach(u => { html += '<span>' + u + '</span>'; });
+    html += '</div>';
+    grid.floors.forEach(floor => {
+      html += '<div class="site-grid-row"><span class="site-grid-floor-label">' + floor + 'F</span>';
+      grid.unitNos.forEach(u => {
+        const unit = grid.cellMap.get(floor + '_' + u);
+        if(!unit){ html += '<div class="site-cell blank"></div>'; return; }
+        const status = getUnitStatus(unit.ho, doneSet);
+        const review = unitNeedsReview(unit.ho);
+        let cls = status, icon = status === 'done' ? '●' : (status === 'current' ? '●' : '○');
+        if(review){ cls = 'review'; icon = '▲'; }
+        html += '<button type="button" class="site-cell ' + cls + '" data-ho="' + unit.ho + '">' + icon + '</button>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    body.innerHTML = html;
+  } else {
+    // 목록형 폴백 — floor/unit을 확실히 구할 수 없는 현장 구조
+    let html = '<div class="site-fallback-note">이 현장은 위치 정보가 명확하지 않아 목록으로 표시합니다.</div>';
+    (currentPreset.units || []).forEach(unit => {
+      const status = getUnitStatus(unit.ho, doneSet);
+      const review = unitNeedsReview(unit.ho);
+      const cls = review ? 'review' : status;
+      const label = review ? '확인 필요' : (status === 'done' ? '완료' : (status === 'current' ? '현재' : '미검침'));
+      html += '<div class="site-list-item" data-ho="' + unit.ho + '">' +
+        '<span class="sl-ho">' + unit.ho + '호</span>' +
+        '<span class="site-list-status ' + cls + '">' + label + '</span>' +
+        '</div>';
+    });
+    body.innerHTML = html;
+  }
+}
+
+// 세대 상세 — 읽기 전용. 여기서 절대 idx를 바꾸거나 entries를 수정하지 않는다.
+function openUnitDetail(ho){
+  const unit = (currentPreset.units || []).find(u => u.ho === ho);
+  if(!unit) return;
+  const types = currentPreset.meterTypes || [];
+  document.getElementById('unit-detail-title').textContent = ho + '호';
+
+  let html = '';
+  types.forEach(type => {
+    const hist = (unit.history && unit.history[type]) || null;
+    const entry = log.find(e => e.ho === ho && e.type === type);
+    const isCurrent = currentItem && currentItem.ho === ho && currentItem.type === type;
+    const currentReading = entry ? parseInt(entry.value, 10)
+      : (isCurrent && staged !== '') ? parseInt(staged, 10) : null;
+
+    html += '<div class="cs-row"><span>검침 종류</span><b>' + type + '</b></div>';
+    if(!entry && !isCurrent){
+      html += '<div class="cs-row"><span>상태</span><b>미검침</b></div>';
+    } else {
+      html += '<div class="cs-row"><span>현재 지침</span><b>' + (currentReading !== null && !isNaN(currentReading) ? currentReading : '-') + '</b></div>';
+      if(entry){
+        html += '<div class="cs-row"><span>확인 필요</span><b class="' + (entry.needsReview ? 'cs-warn' : 'cs-ok') + '">' + (entry.needsReview ? '예' : '아니오') + '</b></div>';
+      }
+    }
+    if(hist){
+      html += '<div class="cs-row"><span>이전 지침</span><b>' + hist.previousReading + '</b></div>';
+      html += '<div class="cs-row"><span>평소 평균</span><b>' + hist.averageUsage + '</b></div>';
+      if(currentReading !== null && !isNaN(currentReading)){
+        const usage = currentReading - hist.previousReading;
+        const diff = usage - hist.averageUsage;
+        html += '<div class="cs-row"><span>이번 사용량</span><b>' + usage + '</b></div>';
+        html += '<div class="cs-row"><span>평균 대비</span><b>' + (diff > 0 ? '+' : '') + diff + '</b></div>';
+      }
+    } else {
+      html += '<div class="cs-row"><span>비교 데이터</span><b>없음</b></div>';
+    }
+    html += '<div style="height:10px;"></div>';
+  });
+  document.getElementById('unit-detail-body').innerHTML = html;
+  document.getElementById('unit-detail-overlay').classList.add('show');
+}
+
+const siteStatusPanel = document.getElementById('site-status-panel');
+const btnOpenSiteStatus = document.getElementById('btn-open-sitestatus');
+const btnCloseSiteStatus = document.getElementById('btn-close-sitestatus');
+btnOpenSiteStatus.addEventListener('click', () => {
+  renderSiteStatusPanel();
+  siteStatusPanel.classList.add('show');
+});
+btnCloseSiteStatus.addEventListener('click', () => { siteStatusPanel.classList.remove('show'); });
+
+// 그리드 셀 / 목록 항목 클릭 — 이벤트 위임으로 한 번만 등록
+document.getElementById('site-status-body').addEventListener('click', (e) => {
+  const target = e.target.closest('[data-ho]');
+  if(target) openUnitDetail(target.getAttribute('data-ho'));
+});
+document.getElementById('btn-unit-detail-close').addEventListener('click', () => {
+  document.getElementById('unit-detail-overlay').classList.remove('show');
+});
 
 presetImportInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
