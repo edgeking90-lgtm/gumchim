@@ -1351,9 +1351,12 @@ async function runAndroidListenLoop(){
     }catch(err){
       // 한 세션 실패가 전체 루프를 끊지 않게, listening이 true인 동안은
       // 잠깐 쉬었다가 계속 재시도한다 (웹 경로의 onerror/onend 재시작과 같은 역할).
-      console.warn('안드로이드 음성 인식 세션 오류', err);
-      if(listening) await new Promise(r => setTimeout(r, 500));
-    }
+     console.warn('안드로이드 음성 인식 세션 오류', err);
+      if(listening){
+        setMicUiListening(true, '재시도 중: ' + msg);
+        await new Promise(r => setTimeout(r, 500));
+      }
+      }
   }
 }
 
