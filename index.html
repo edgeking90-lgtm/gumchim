@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>202동 검침</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0f0d">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  :root{
+    --ink:#0a0f0d;
+    --panel:#121a17;
+    --panel-2:#182420;
+    --amber:#ffb300;
+    --amber-dim:#7a5a12;
+    --teal:#4fd1c5;
+    --warm:#ff7a56;
+    --paper:#eae7de;
+    --muted:#6f7972;
+    --line:#243530;
+    --danger:#ff5252;
+    --good:#5fd97a;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:var(--ink);
+    color:var(--paper);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    overflow-x:hidden;
+  }
+  .app{
+    max-width:520px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 28px);
+  }
+
+  /* 최초 진입: 권한 게이트 */
+  #permission-gate{
+    position:fixed; inset:0; background:var(--ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:28px; z-index:50; text-align:center;
+  }
+  #permission-gate.hidden{ display:none; }
+  #permission-gate h1{
+    font-size:22px; margin:0 0 6px; color:var(--paper);
+  }
+  #permission-gate p{
+    color:var(--muted); font-size:14px; line-height:1.7; max-width:340px; margin:0 0 26px;
+  }
+  .perm-rows{ width:100%; max-width:340px; display:flex; flex-direction:column; gap:10px; margin-bottom:22px; }
+  .perm-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px;
+  }
+  .perm-row .label{ display:flex; align-items:center; gap:10px; font-size:15px; }
+  .perm-row .status{ font-size:13px; font-weight:700; }
+  .status.pending{ color:var(--muted); }
+  .status.ok{ color:var(--good); }
+  .status.fail{ color:var(--danger); }
+  .btn-grant{
+    width:100%; max-width:340px;
+    background:var(--amber); color:#1a1400;
+    font-size:17px; font-weight:800;
+    padding:16px 0; border-radius:14px; border:none;
+  }
+  .btn-skip{
+    margin-top:10px; background:transparent; border:none; color:var(--muted);
+    font-size:13px; text-decoration:underline; padding:8px;
+  }
+
+  /* 상단 바 */
+  .topbar{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:6px 4px 14px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:16px;
+  }
+  .topbar .dong{ font-size:15px; letter-spacing:0.06em; color:var(--muted); text-transform:uppercase; }
+  .topbar .progress{ font-size:13px; color:var(--teal); font-variant-numeric:tabular-nums; }
+
+  .location{ text-align:center; margin-bottom:10px; }
+  .location .ho{ font-size:42px; font-weight:700; letter-spacing:0.01em; color:var(--paper); }
+  .location .type{
+    display:inline-block; margin-top:6px; padding:4px 16px; border-radius:999px;
+    font-size:14px; font-weight:600; letter-spacing:0.08em;
+  }
+  .type.cold{ background:rgba(79,209,197,0.14); color:var(--teal); border:1px solid rgba(79,209,197,0.35);}
+  .type.hot{ background:rgba(255,122,86,0.14); color:var(--warm); border:1px solid rgba(255,122,86,0.35);}
+
+  .meter-shell{
+    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 18px;
+    margin:18px 0 14px;
+    box-shadow:inset 0 2px 10px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.02);
+    position:relative;
+  }
+  .meter-shell::before{
+    content:"㎥"; position:absolute; top:10px; right:16px;
+    font-size:12px; color:var(--muted); letter-spacing:0.1em;
+  }
+  .digits{
+    font-family:"SF Mono","JetBrains Mono","Consolas",monospace;
+    font-size:64px; font-weight:700; text-align:center; letter-spacing:0.06em;
+    color:var(--amber); text-shadow:0 0 18px rgba(255,179,0,0.35);
+    min-height:78px; line-height:78px; word-break:break-all;
+  }
+  .digits.empty{ color:var(--amber-dim); }
+  .digits .cursor{
+    display:inline-block; width:3px; height:48px; background:var(--amber);
+    margin-left:4px; vertical-align:middle; animation:blink 1s step-start infinite;
+  }
+  @keyframes blink{ 50%{opacity:0;} }
+
+  .mic-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin:6px 0 4px; min-height:22px; }
+  .mic-dot{ width:10px; height:10px; border-radius:50%; background:var(--muted); }
+  .mic-dot.live{
+    background:var(--danger); box-shadow:0 0 0 0 rgba(255,82,82,0.6); animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,82,82,0.5);}
+    70%{box-shadow:0 0 0 10px rgba(255,82,82,0);}
+    100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}
+  }
+  .mic-text{ font-size:13px; color:var(--muted); }
+  .transcript{ text-align:center; font-size:13px; color:var(--muted); min-height:18px; margin-bottom:10px; padding:0 10px; }
+
+  /* 카메라 증빙 미리보기 */
+  .cam-strip{
+    display:flex; align-items:center; gap:10px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:8px 10px; margin-bottom:10px;
+  }
+  .cam-strip video{
+    width:52px; height:52px; border-radius:8px; object-fit:cover; background:#000;
+  }
+  .cam-strip .cam-info{ flex:1; font-size:12px; color:var(--muted); line-height:1.5; }
+  .cam-strip .cam-status{ font-size:12px; font-weight:700; }
+
+  .actions{ display:flex; gap:10px; margin-top:10px; }
+  button{ font-family:inherit; border:none; cursor:pointer; }
+  .btn-ok{
+    flex:1; background:var(--amber); color:#1a1400; font-size:22px; font-weight:800;
+    padding:20px 0; border-radius:14px; letter-spacing:0.02em;
+    transition:transform .08s ease, opacity .15s ease;
+  }
+  .btn-ok:active{ transform:scale(0.97); }
+  .btn-ok:disabled{ opacity:0.35; }
+  .btn-redo{
+    width:76px; background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
+    border-radius:14px; font-size:13px;
+  }
+  .btn-mic{
+    width:100%; margin-top:10px; background:transparent; border:1px solid var(--line);
+    color:var(--muted); padding:12px 0; border-radius:12px; font-size:14px;
+  }
+  .btn-mic.on{ color:var(--teal); border-color:rgba(79,209,197,0.4); }
+
+  /* 숫자 키패드 백업 — 음성이 안 통할 때(오프라인 등) 확실히 동작하는 경로 */
+  .keypad{
+    display:none; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:10px;
+  }
+  .keypad.show{ display:grid; }
+  .keypad button{
+    background:var(--panel); border:1px solid var(--line); color:var(--paper);
+    font-size:22px; font-weight:700; padding:16px 0; border-radius:12px;
+  }
+  .keypad button:active{ background:var(--panel-2); }
+  .keypad button.wide{ font-size:15px; color:var(--muted); }
+
+  .log-section{ margin-top:26px; }
+  .log-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .log-header h2{
+    font-size:13px; color:var(--muted); font-weight:600; letter-spacing:0.06em;
+    text-transform:uppercase; margin:0;
+  }
+  .btn-export{
+    font-size:12px; color:var(--teal); background:transparent;
+    border:1px solid rgba(79,209,197,0.3); padding:6px 10px; border-radius:8px;
+  }
+  .log-list{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .log-item{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px;
+  }
+  .log-item .li-left{ display:flex; align-items:center; gap:8px; }
+  .log-item .li-ho{ font-weight:700; color:var(--paper); font-variant-numeric:tabular-nums;}
+  .log-item .li-type{ font-size:11px; padding:2px 8px; border-radius:999px; font-weight:700;}
+  .li-type.cold{ background:rgba(79,209,197,0.14); color:var(--teal);}
+  .li-type.hot{ background:rgba(255,122,86,0.14); color:var(--warm);}
+  .log-item .li-val{ font-family:monospace; color:var(--amber); font-size:15px; }
+  .log-item .li-del{ color:var(--danger); background:transparent; font-size:12px; padding:4px 8px;}
+  .log-empty{ color:var(--muted); font-size:13px; text-align:center; padding:16px 0; }
+
+  .done-banner{ text-align:center; padding:40px 10px; color:var(--teal); }
+  .done-banner .big{ font-size:22px; font-weight:800; margin-bottom:8px; }
+
+  .hint{ text-align:center; font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6; }
+  .offline-badge{
+    display:none; text-align:center; font-size:12px; color:var(--warm);
+    background:rgba(255,122,86,0.1); border:1px solid rgba(255,122,86,0.3);
+    border-radius:10px; padding:8px; margin-bottom:12px;
+  }
+  .offline-badge.show{ display:block; }
+</style>
+</head>
+<body>
+
+<!-- 최초 진입 시 권한 요청 게이트 -->
+<div id="permission-gate">
+  <h1>시작 전에 권한이 필요해요</h1>
+  <p>계량기를 보고(카메라) 숫자를 말하면(마이크) 자동으로 기록됩니다.<br>앱을 홈 화면에 추가해두면 다음부터 바로 열려요.</p>
+  <div class="perm-rows">
+    <div class="perm-row">
+      <div class="label">🎤 마이크 (숫자 음성 인식)</div>
+      <div class="status pending" id="mic-perm-status">대기</div>
+    </div>
+    <div class="perm-row">
+      <div class="label">📷 카메라 (검침 증빙 사진)</div>
+      <div class="status pending" id="cam-perm-status">대기</div>
+    </div>
+  </div>
+  <button class="btn-grant" id="btn-grant">권한 허용하고 시작</button>
+  <button class="btn-skip" id="btn-skip">일단 건너뛰기 (버튼으로 진행)</button>
+</div>
+
+<div class="app">
+
+  <div class="offline-badge" id="offline-badge">📴 오프라인 · 기기에 저장 중</div>
+
+  <div class="topbar">
+    <div class="dong">202동 · 8호 라인</div>
+    <div class="progress" id="progress">0 / 320</div>
+  </div>
+
+  <div id="active-screen">
+    <div class="location">
+      <div class="ho" id="ho-label">2008호</div>
+      <div class="type cold" id="type-label">냉수</div>
+    </div>
+
+    <div class="cam-strip">
+      <video id="cam-preview" autoplay playsinline muted></video>
+      <div class="cam-info">카메라 미리보기 (자동 저장은 다음 단계)</div>
+      <div class="cam-status status pending" id="cam-live-status">대기</div>
+    </div>
+
+    <div class="meter-shell">
+      <div class="digits empty" id="digits">숫자를 말하세요<span class="cursor"></span></div>
+    </div>
+
+    <div class="mic-row">
+      <div class="mic-dot" id="mic-dot"></div>
+      <div class="mic-text" id="mic-text">마이크 대기 중</div>
+    </div>
+    <div class="transcript" id="transcript">&nbsp;</div>
+
+    <div class="actions">
+      <button class="btn-redo" id="btn-clear">정정</button>
+      <button class="btn-ok" id="btn-ok" disabled>오케이</button>
+    </div>
+    <button class="btn-mic" id="btn-mic">🎤 음성 인식 시작</button>
+    <button class="btn-mic" id="btn-keypad-toggle">🔢 숫자로 입력 (음성 안 될 때)</button>
+    <div class="keypad" id="keypad">
+      <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
+      <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
+      <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
+      <button class="wide" data-k="clear">지우기</button><button data-k="0">0</button><button class="wide" data-k="back">⌫</button>
+    </div>
+  </div>
+
+  <div id="done-screen" style="display:none" class="done-banner">
+    <div class="big">202동 검침 완료</div>
+    <div>총 320건 기록됨. 아래에서 CSV로 내려받으세요.</div>
+  </div>
+
+  <div class="log-section">
+    <div class="log-header">
+      <h2>기록 (<span id="log-count">0</span>)</h2>
+      <button class="btn-export" id="btn-export">CSV 내보내기</button>
+      <button class="btn-export" id="btn-export-xlsx" style="margin-left:6px;">엑셀 내보내기</button>
+    </div>
+    <div class="log-list" id="log-list">
+      <div class="log-empty">아직 기록이 없습니다</div>
+    </div>
+  </div>
+
+  <div class="hint">
+    "숫자" 말하기 → "오케이"로 확정 · "정정"이라 말하면 다시 입력<br>
+    새로고침해도 기록은 기기에 남아있습니다
+  </div>
+
+</div>
+
+<script>
+// =====================================================================
+// 0. 서비스워커 등록 (오프라인 앱 셸) — https 환경에서만 동작
+// =====================================================================
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW 등록 실패', err));
+  });
+}
+
+window.addEventListener('online', () => document.getElementById('offline-badge').classList.remove('show'));
+window.addEventListener('offline', () => document.getElementById('offline-badge').classList.add('show'));
+if (!navigator.onLine) document.getElementById('offline-badge').classList.add('show');
+
+// =====================================================================
+// 1. IndexedDB — 기기에 영구 저장 (새로고침/오프라인에도 데이터 유지)
+//    원칙: "서버를 믿지 않는다. 먼저 기기에 저장한다."
+// =====================================================================
+const DB_NAME = 'gumchim-db';
+const DB_VERSION = 2; // v2: keyPath를 자동증가 id → "호수_종류" 고유키로 변경 (DB가 중복 저장을 원천 차단)
+const STORE = 'entries';
+let db = null;
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const _db = e.target.result;
+      // 스키마가 바뀌었으므로 기존 스토어가 있으면 지우고 새 keyPath로 재생성한다.
+      // (아직 현장 실사용 전 개발 단계라 데이터 마이그레이션은 필요 없음)
+      if (_db.objectStoreNames.contains(STORE)) {
+        _db.deleteObjectStore(STORE);
+      }
+      const store = _db.createObjectStore(STORE, { keyPath: 'key' });
+      store.createIndex('by_time', 'time');
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function dbAdd(entry){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    // add()는 같은 key가 이미 있으면 ConstraintError로 실패한다.
+    // 이게 "한 검침항목당 하나의 확정값"이라는 제약의 마지막 방어선이다.
+    const req = store.add(entry);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => { e.preventDefault(); reject(e.target.error); };
+  });
+}
+
+function dbGetAll(){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function dbDelete(key){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite');
+    const store = tx.objectStore(STORE);
+    const req = store.delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// =====================================================================
+// 2. 검침 순서: 20층→1층, 층내 8→1, 각 호수 냉수→온수
+// =====================================================================
+function buildSequence(){
+  const seq = [];
+  for(let floor=20; floor>=1; floor--){
+    for(let unit=8; unit>=1; unit--){
+      const ho = floor*100 + unit;
+      seq.push({ho, type:'냉수'});
+      seq.push({ho, type:'온수'});
+    }
+  }
+  return seq;
+}
+const SEQUENCE = buildSequence();
+let idx = 0;
+let staged = '';
+let log = [];
+
+const hoLabel = document.getElementById('ho-label');
+const typeLabel = document.getElementById('type-label');
+const digitsEl = document.getElementById('digits');
+const progressEl = document.getElementById('progress');
+const btnOk = document.getElementById('btn-ok');
+const btnClear = document.getElementById('btn-clear');
+const btnMic = document.getElementById('btn-mic');
+const micDot = document.getElementById('mic-dot');
+const micText = document.getElementById('mic-text');
+const transcriptEl = document.getElementById('transcript');
+const logList = document.getElementById('log-list');
+const logCount = document.getElementById('log-count');
+const activeScreen = document.getElementById('active-screen');
+const doneScreen = document.getElementById('done-screen');
+const btnExport = document.getElementById('btn-export');
+const camPreview = document.getElementById('cam-preview');
+const camLiveStatus = document.getElementById('cam-live-status');
+
+// 각 검침 항목의 고유 키 (동-호수-종류). 임의 삭제가 일어나도
+// "몇 건 했는지 개수"가 아니라 "이 항목을 실제로 했는가"로 다음 위치를 찾는다.
+// 원칙: 과거 항목이 삭제돼도 이후 항목이 밀려서 중복 기록되면 안 된다.
+function entryKey(item){ return item.ho + '_' + item.type; }
+
+function findNextIdx(){
+  const done = new Set(log.map(entryKey));
+  for(let i=0; i<SEQUENCE.length; i++){
+    if(!done.has(entryKey(SEQUENCE[i]))) return i;
+  }
+  return SEQUENCE.length;
+}
+
+function renderCurrent(){
+  idx = findNextIdx();
+  if(idx >= SEQUENCE.length){
+    activeScreen.style.display = 'none';
+    doneScreen.style.display = 'block';
+    progressEl.textContent = SEQUENCE.length + ' / ' + SEQUENCE.length;
+    return;
+  }
+  const cur = SEQUENCE[idx];
+  hoLabel.textContent = cur.ho + '호';
+  typeLabel.textContent = cur.type;
+  typeLabel.className = 'type ' + (cur.type === '냉수' ? 'cold' : 'hot');
+  progressEl.textContent = (idx+1) + ' / ' + SEQUENCE.length;
+  renderStaged();
+}
+
+function renderStaged(){
+  if(staged === ''){
+    digitsEl.innerHTML = '숫자를 말하세요<span class="cursor"></span>';
+    digitsEl.classList.add('empty');
+    btnOk.disabled = true;
+  } else {
+    digitsEl.textContent = staged;
+    digitsEl.classList.remove('empty');
+    btnOk.disabled = false;
+  }
+}
+
+function renderLog(){
+  logCount.textContent = log.length;
+  if(log.length === 0){
+    logList.innerHTML = '<div class="log-empty">아직 기록이 없습니다</div>';
+    return;
+  }
+  logList.innerHTML = '';
+  for(let i=log.length-1; i>=0; i--){
+    const item = log[i];
+    const row = document.createElement('div');
+    row.className = 'log-item';
+    row.innerHTML = `
+      <div class="li-left">
+        <span class="li-ho">${item.ho}호</span>
+        <span class="li-type ${item.type==='냉수'?'cold':'hot'}">${item.type}</span>
+      </div>
+      <div class="li-left">
+        <span class="li-val">${item.value}</span>
+        <button class="li-del" data-key="${item.key}">삭제</button>
+      </div>
+    `;
+    logList.appendChild(row);
+  }
+  logList.querySelectorAll('.li-del').forEach(b=>{
+    b.addEventListener('click', async (e)=>{
+      const key = e.target.getAttribute('data-key');
+      await dbDelete(key);
+      log = log.filter(x => x.key !== key);
+      renderLog();
+      renderCurrent();
+    });
+  });
+}
+
+let saving = false; // 오케이 연타/음성 중복 인식으로 같은 항목이 두 번 저장되는 것을 막는 잠금장치
+
+async function confirmCurrent(){
+  if(saving) return;
+  if(staged === '' || idx >= SEQUENCE.length) return;
+  saving = true;
+  btnOk.disabled = true;
+  try{
+    const cur = SEQUENCE[idx];
+    const entry = { key: entryKey(cur), ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString() };
+    try{
+      await dbAdd(entry);
+      log.push(entry);
+    }catch(dbErr){
+      // ConstraintError = 이미 같은 항목이 저장돼 있음(중복 확정 시도).
+      // DB가 이미 막아줬으니 화면만 정상 흐름으로 되돌린다.
+      console.warn('중복 확정 감지 — 이미 저장된 항목, 무시함', dbErr);
+    }
+    renderLog();
+    staged = '';
+    renderCurrent();
+  } finally {
+    saving = false;
+  }
+}
+
+function clearStaged(){
+  staged = '';
+  renderStaged();
+}
+
+btnOk.addEventListener('click', confirmCurrent);
+btnClear.addEventListener('click', clearStaged);
+
+// =====================================================================
+// 3-2. 엑셀 내보내기 — 오프라인에서도 앱이 살아있어야 하므로,
+//      외부 라이브러리(SheetJS)는 시작 시 강제로 불러오지 않고
+//      "엑셀 내보내기"를 눌렀을 때만, 그 순간만 온라인이면 불러온다.
+//      실패하면(오프라인 등) CSV를 쓰라고 안내하고 앱은 계속 정상 동작한다.
+// =====================================================================
+let sheetJsLoadPromise = null;
+function loadSheetJS(){
+  if(window.XLSX) return Promise.resolve();
+  if(sheetJsLoadPromise) return sheetJsLoadPromise;
+  sheetJsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('네트워크에서 엑셀 라이브러리를 불러오지 못했습니다'));
+    document.head.appendChild(script);
+  });
+  return sheetJsLoadPromise;
+}
+
+const btnExportXlsx = document.getElementById('btn-export-xlsx');
+btnExportXlsx.addEventListener('click', async ()=>{
+  const original = btnExportXlsx.textContent;
+  btnExportXlsx.textContent = '불러오는 중...';
+  btnExportXlsx.disabled = true;
+  try{
+    await loadSheetJS();
+    const rows = [['동','호수','종류','검침값','시각']];
+    log.forEach(item => rows.push(['202동', item.ho, item.type, item.value, item.time]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:8},{wch:8},{wch:8},{wch:10},{wch:22}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '검침결과');
+    XLSX.writeFile(wb, '202동_검침_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  }catch(err){
+    console.error(err);
+    alert('오프라인이라 엑셀 내보내기를 쓸 수 없습니다. 대신 CSV 내보내기를 눌러주세요 (같은 데이터입니다).');
+  }finally{
+    btnExportXlsx.textContent = original;
+    btnExportXlsx.disabled = false;
+  }
+});
+
+// =====================================================================
+// 3. CSV 내보내기
+// =====================================================================
+btnExport.addEventListener('click', ()=>{
+  let csv = '동,호수,종류,검침값,시각\n';
+  log.forEach(item=>{
+    csv += `202동,${item.ho},${item.type},${item.value},${item.time}\n`;
+  });
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '202동_검침_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+// =====================================================================
+// 4. 한글 숫자 파싱 + 명령어 판별
+// =====================================================================
+const KOR_DIGIT = {'영':'0','공':'0','일':'1','이':'2','삼':'3','사':'4','오':'5','육':'6','유':'6','칠':'7','팔':'8','구':'9'};
+// 현장 표준은 "자릿수를 하나씩 읽기" (일이삼팔 → 1238) 뿐이다.
+// "천이백삼십팔" 같은 자릿값 표현은 지원하지 않는데, 이걸 그냥 무시하면
+// 첫째/셋째 글자만 남아 "238"처럼 조용히 틀린 값이 만들어질 수 있다.
+// 그래서 자릿값 단어가 섞여 있으면 아예 숫자를 뽑지 않고 재입력을 유도한다.
+const PLACE_VALUE_WORDS = /천|백|십|만/;
+function extractDigits(text){
+  const numMatch = text.match(/\d+/g);
+  if(numMatch && numMatch.join('').length >= 1) return numMatch.join('');
+  if(PLACE_VALUE_WORDS.test(text)) return null; // 지원하지 않는 형식 — 무시하고 재시도 유도
+  let result = '';
+  for(const ch of text){
+    if(KOR_DIGIT[ch] !== undefined) result += KOR_DIGIT[ch];
+  }
+  return result;
+}
+function isConfirmCommand(text){ return /오케이|오 ?케이|확인|컨펌|okay|ok/i.test(text); }
+function isClearCommand(text){ return /정정|다시|취소|리셋/.test(text); }
+
+// =====================================================================
+// 5. 음성 인식
+// =====================================================================
+let recognition = null;
+let listening = false;
+
+function setupRecognition(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    micText.textContent = '이 브라우저는 음성 인식을 지원하지 않습니다 (버튼으로 진행)';
+    btnMic.disabled = true;
+    btnMic.textContent = '음성 인식 미지원';
+    return;
+  }
+  recognition = new SR();
+  recognition.lang = 'ko-KR';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+
+  recognition.onresult = (event)=>{
+    let finalText = '';
+    let interimText = '';
+    for(let i=event.resultIndex; i<event.results.length; i++){
+      const t = event.results[i][0].transcript;
+      if(event.results[i].isFinal) finalText += t; else interimText += t;
+    }
+    if(interimText) transcriptEl.textContent = interimText;
+    if(finalText){
+      transcriptEl.textContent = finalText;
+      handleUtterance(finalText.trim());
+    }
+  };
+  recognition.onerror = (e)=>{
+    // 음성인식은 브라우저에 따라 서버 기반으로 동작할 수 있어,
+    // 인터넷이 끊기면 "network" 오류로 실패할 수 있다.
+    // 이때 onend에서 자동 재시작하면 network 오류가 계속 반복되는 루프에 빠질 수 있으므로
+    // listening을 확실히 false로 내려서 재시작을 막고, 키패드로 넘긴다.
+    if(e.error === 'network'){
+      listening = false;
+      micDot.classList.remove('live');
+      micText.textContent = '오프라인 — 숫자 키패드로 계속하세요';
+      btnMic.textContent = '🎤 음성 인식 시작';
+      btnMic.classList.remove('on');
+      keypad.classList.add('show');
+    } else {
+      micText.textContent = '인식 오류 (' + e.error + ') · 재시작 중';
+    }
+  };
+  recognition.onend = ()=>{
+    if(listening){ try{ recognition.start(); }catch(err){} }
+    else { micDot.classList.remove('live'); if(micText.textContent === '듣는 중...') micText.textContent = '마이크 대기 중'; }
+  };
+}
+
+function handleUtterance(text){
+  if(isConfirmCommand(text)){ confirmCurrent(); return; }
+  if(isClearCommand(text)){ clearStaged(); return; }
+  const digits = extractDigits(text);
+  if(digits === null){
+    transcriptEl.textContent = '숫자를 한 자리씩 말해주세요 (예: 일 이 삼 팔)';
+    return;
+  }
+  if(digits){ staged = digits; renderStaged(); }
+}
+
+// 숫자 키패드 — 음성 인식이 안 되거나(오프라인 등) 실패할 때의 확실한 백업 경로
+const btnKeypadToggle = document.getElementById('btn-keypad-toggle');
+const keypad = document.getElementById('keypad');
+btnKeypadToggle.addEventListener('click', ()=>{
+  keypad.classList.toggle('show');
+});
+keypad.addEventListener('click', (e)=>{
+  const k = e.target.getAttribute('data-k');
+  if(!k) return;
+  if(k === 'clear'){ staged = ''; }
+  else if(k === 'back'){ staged = staged.slice(0, -1); }
+  else { staged += k; }
+  renderStaged();
+});
+
+btnMic.addEventListener('click', ()=>{
+  if(!recognition){ setupRecognition(); if(!recognition) return; }
+  if(!listening){
+    try{
+      recognition.start();
+      listening = true;
+      micDot.classList.add('live');
+      micText.textContent = '듣는 중...';
+      btnMic.textContent = '🎤 음성 인식 중지';
+      btnMic.classList.add('on');
+    }catch(err){ console.error(err); }
+  } else {
+    listening = false;
+    recognition.stop();
+    btnMic.textContent = '🎤 음성 인식 시작';
+    btnMic.classList.remove('on');
+  }
+});
+
+// =====================================================================
+// 6. 카메라 (증빙 사진 인프라 — 지금은 실시간 미리보기까지만)
+//    다음 단계: "오케이" 확정 순간 프레임을 자동 캡처해 기록에 첨부
+// =====================================================================
+let camStream = null;
+async function startCamera(){
+  try{
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }, audio: false
+    });
+    camPreview.srcObject = camStream;
+    camLiveStatus.textContent = '켜짐';
+    camLiveStatus.className = 'cam-status status ok';
+    return true;
+  }catch(err){
+    camLiveStatus.textContent = '거부됨';
+    camLiveStatus.className = 'cam-status status fail';
+    console.error('카메라 오류', err);
+    return false;
+  }
+}
+
+// =====================================================================
+// 7. 최초 진입 권한 게이트
+// =====================================================================
+const gate = document.getElementById('permission-gate');
+const micPermStatus = document.getElementById('mic-perm-status');
+const camPermStatus = document.getElementById('cam-perm-status');
+const btnGrant = document.getElementById('btn-grant');
+const btnSkip = document.getElementById('btn-skip');
+
+async function requestAllPermissions(){
+  btnGrant.disabled = true;
+  btnGrant.textContent = '확인 중...';
+
+  // 마이크: getUserMedia로 실제 권한을 확정시킨 뒤 트랙은 바로 정지
+  // (실제 인식은 SpeechRecognition이 별도로 시작하지만, 최초 권한 프롬프트를
+  //  이 시점에 한 번에 받아서 이후 흐름을 끊지 않기 위함)
+  try{
+    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micStream.getTracks().forEach(t => t.stop());
+    micPermStatus.textContent = '허용됨';
+    micPermStatus.className = 'status ok';
+  }catch(err){
+    micPermStatus.textContent = '거부됨';
+    micPermStatus.className = 'status fail';
+  }
+
+  const camOk = await startCamera();
+  camPermStatus.textContent = camOk ? '허용됨' : '거부됨';
+  camPermStatus.className = 'status ' + (camOk ? 'ok' : 'fail');
+
+  btnGrant.disabled = false;
+  btnGrant.textContent = '계속하기';
+  btnGrant.onclick = () => { gate.classList.add('hidden'); };
+}
+
+btnGrant.addEventListener('click', requestAllPermissions, { once: true });
+btnSkip.addEventListener('click', () => { gate.classList.add('hidden'); });
+
+// 브라우저가 이미 마이크/카메라를 둘 다 허용한 상태라면 게이트를 건너뛴다.
+// (Permissions API 미지원 브라우저에서는 그냥 매번 게이트를 보여준다 — 안전한 기본값)
+async function skipGateIfAlreadyGranted(){
+  if(!navigator.permissions || !navigator.permissions.query) return;
+  try{
+    const [mic, cam] = await Promise.all([
+      navigator.permissions.query({ name: 'microphone' }),
+      navigator.permissions.query({ name: 'camera' })
+    ]);
+    if(mic.state === 'granted' && cam.state === 'granted'){
+      await startCamera();
+      gate.classList.add('hidden');
+    }
+  }catch(err){
+    // 일부 브라우저는 microphone/camera 권한 조회 자체를 지원하지 않음 — 조용히 무시
+  }
+}
+
+// =====================================================================
+// 8. 초기화
+// =====================================================================
+(async function init(){
+  db = await openDB();
+  log = await dbGetAll();
+  log.sort((a,b) => a.time.localeCompare(b.time));
+  renderLog();
+  renderCurrent();
+  setupRecognition();
+  await skipGateIfAlreadyGranted();
+})();
+</script>
+</body>
+</html>
