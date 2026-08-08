@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>202동 검침</title>
+<title>검침 어시스턴트</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0f0d">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -87,6 +87,10 @@
   .topbar .progress{ font-size:13px; color:var(--teal); font-variant-numeric:tabular-nums; }
 
   .location{ text-align:center; margin-bottom:10px; }
+  .loc-badge{
+    display:inline-block; font-size:11px; font-weight:700; letter-spacing:0.06em;
+    color:var(--ink); background:var(--teal); padding:3px 10px; border-radius:999px; margin-bottom:6px;
+  }
   .location .ho{ font-size:42px; font-weight:700; letter-spacing:0.01em; color:var(--paper); }
   .location .type{
     display:inline-block; margin-top:6px; padding:4px 16px; border-radius:999px;
@@ -94,6 +98,7 @@
   }
   .type.cold{ background:rgba(79,209,197,0.14); color:var(--teal); border:1px solid rgba(79,209,197,0.35);}
   .type.hot{ background:rgba(255,122,86,0.14); color:var(--warm); border:1px solid rgba(255,122,86,0.35);}
+  .type.neutral{ background:rgba(139,132,120,0.16); color:var(--paper); border:1px solid var(--line);}
 
   .meter-shell{
     background:linear-gradient(180deg,var(--panel-2),var(--panel));
@@ -134,17 +139,40 @@
   .mic-text{ font-size:13px; color:var(--muted); }
   .transcript{ text-align:center; font-size:13px; color:var(--muted); min-height:18px; margin-bottom:10px; padding:0 10px; }
 
-  /* 카메라 증빙 미리보기 */
-  .cam-strip{
-    display:flex; align-items:center; gap:10px;
-    background:var(--panel); border:1px solid var(--line); border-radius:12px;
-    padding:8px 10px; margin-bottom:10px;
+  /* 대형 카메라 프리뷰 — 검침 화면의 시각적 중심 */
+  .camera-stage{
+    position:relative; width:100%; aspect-ratio:4/3;
+    background:#000; border-radius:16px; overflow:hidden;
+    border:1px solid var(--line); margin-top:12px;
   }
-  .cam-strip video{
-    width:52px; height:52px; border-radius:8px; object-fit:cover; background:#000;
+  .camera-stage video{
+    width:100%; height:100%; object-fit:cover; display:block;
   }
-  .cam-strip .cam-info{ flex:1; font-size:12px; color:var(--muted); line-height:1.5; }
-  .cam-strip .cam-status{ font-size:12px; font-weight:700; }
+  .cam-badge{
+    position:absolute; top:10px; left:10px; font-size:11px; font-weight:800;
+    padding:4px 9px; border-radius:6px; letter-spacing:0.04em;
+  }
+  .cam-badge.live{ background:rgba(255,82,82,0.9); color:#fff; }
+  .cam-overlay{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(10,15,13,0.55); pointer-events:none;
+  }
+  .cam-overlay.hidden{ display:none; }
+  .cam-overlay-text{
+    color:var(--muted); font-size:13px; text-align:center; padding:0 20px; line-height:1.6;
+  }
+
+  /* 음성값 ↔ 카메라 인식값 비교 */
+  .ocr-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:8px 4px 4px; font-size:13px;
+  }
+  .ocr-left{ display:flex; align-items:center; gap:8px; }
+  .ocr-label{ color:var(--muted); }
+  .ocr-value{ font-family:"SF Mono","JetBrains Mono",monospace; color:var(--paper); font-weight:700; }
+  .ocr-match{ font-weight:700; }
+  .ocr-match.ok{ color:var(--good); }
+  .ocr-match.warn{ color:var(--warm); }
 
   .actions{ display:flex; gap:10px; margin-top:10px; }
   button{ font-family:inherit; border:none; cursor:pointer; }
@@ -197,6 +225,7 @@
   .log-item .li-type{ font-size:11px; padding:2px 8px; border-radius:999px; font-weight:700;}
   .li-type.cold{ background:rgba(79,209,197,0.14); color:var(--teal);}
   .li-type.hot{ background:rgba(255,122,86,0.14); color:var(--warm);}
+  .li-type.neutral{ background:rgba(139,132,120,0.16); color:var(--paper);}
   .log-item .li-val{ font-family:monospace; color:var(--amber); font-size:15px; }
   .log-item .li-del{ color:var(--danger); background:transparent; font-size:12px; padding:4px 8px;}
   .log-empty{ color:var(--muted); font-size:13px; text-align:center; padding:16px 0; }
@@ -205,12 +234,63 @@
   .done-banner .big{ font-size:22px; font-weight:800; margin-bottom:8px; }
 
   .hint{ text-align:center; font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6; }
+
+  /* 진행 미니맵 — 건물 도면이 아니라 "전체 중 어디쯤인지"만 보여주는 용도 */
+  .minimap{ margin-top:22px; }
+  .minimap-title{ font-size:11px; color:var(--muted); text-align:center; margin-bottom:6px; letter-spacing:0.04em; }
+  .minimap-track{ display:flex; gap:2px; }
+  .minimap-track .mm-seg{
+    flex:1; height:8px; border-radius:2px; background:var(--panel-2); border:1px solid var(--line);
+    position:relative;
+  }
+  .minimap-track .mm-seg.done{ background:var(--good); border-color:var(--good); }
+  .minimap-track .mm-seg.current{ background:var(--amber); border-color:var(--amber); }
+  .minimap-track .mm-seg.current::after{
+    content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+    border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--amber);
+  }
+  .minimap-labels{
+    display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px;
+  }
   .offline-badge{
     display:none; text-align:center; font-size:12px; color:var(--warm);
     background:rgba(255,122,86,0.1); border:1px solid rgba(255,122,86,0.3);
     border-radius:10px; padding:8px; margin-bottom:12px;
   }
   .offline-badge.show{ display:block; }
+
+  /* 현장(Preset) 선택 화면 */
+  #site-select-screen{ display:block; }
+  #site-select-screen.hidden{ display:none; }
+  #site-content{ display:none; }
+  #site-content.show{ display:block; }
+  .site-select-title{ font-size:20px; font-weight:800; margin:4px 0 16px; }
+  .preset-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:16px 18px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .preset-card .pc-info{ flex:1; min-width:0; }
+  .preset-card .pc-name{ font-size:16px; font-weight:700; color:var(--paper); }
+  .preset-card .pc-meta{ font-size:12px; color:var(--muted); margin-top:4px; }
+  .preset-card .pc-progress{ font-size:12px; color:var(--teal); font-variant-numeric:tabular-nums; margin-top:4px; }
+  .preset-card .pc-btn{
+    background:var(--amber); color:#1a1400; font-weight:800; font-size:14px;
+    padding:10px 18px; border-radius:10px; flex-shrink:0;
+  }
+  .preset-card .pc-btn.done{ background:var(--good); }
+  .import-box{
+    margin-top:18px; padding:16px; border:1px dashed var(--line); border-radius:12px; text-align:center;
+  }
+  .import-box label.import-label{
+    display:inline-block; background:transparent; border:1px solid var(--teal); color:var(--teal);
+    padding:10px 20px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer;
+  }
+  .import-box input[type=file]{ display:none; }
+  .import-hint{ font-size:12px; color:var(--muted); margin-top:8px; }
+  .btn-switch-site{
+    background:transparent; border:1px solid var(--line); color:var(--muted);
+    font-size:12px; padding:5px 10px; border-radius:8px; margin-left:8px;
+  }
 </style>
 </head>
 <body>
@@ -237,25 +317,48 @@
 
   <div class="offline-badge" id="offline-badge">📴 오프라인 · 기기에 저장 중</div>
 
-  <div class="topbar">
-    <div class="dong">202동 · 8호 라인</div>
-    <div class="progress" id="progress">0 / 320</div>
+  <div class="topbar" id="topbar" style="display:none;">
+    <div class="dong"><span id="topbar-dong">현장</span><button class="btn-switch-site" id="btn-switch-site" type="button">현장 변경</button></div>
+    <div class="progress" id="progress">0 / 0</div>
   </div>
 
+  <!-- 현장(Preset) 선택 화면 -->
+  <div id="site-select-screen">
+    <div class="site-select-title">검침 현장</div>
+    <div id="preset-list"></div>
+    <div class="import-box">
+      <label class="import-label" for="preset-import-input">+ JSON 프리셋 불러오기</label>
+      <input type="file" id="preset-import-input" accept=".json">
+      <div class="import-hint">PC의 구조 확인 도구(structure-preview)에서 저장한 JSON 파일을 넣으세요.</div>
+    </div>
+  </div>
+
+  <div id="site-content">
   <div id="active-screen">
     <div class="location">
-      <div class="ho" id="ho-label">2008호</div>
-      <div class="type cold" id="type-label">냉수</div>
+      <span class="loc-badge">현재 위치</span>
+      <div class="ho" id="ho-label">-</div>
+      <div class="type cold" id="type-label">-</div>
     </div>
 
-    <div class="cam-strip">
+    <div class="camera-stage" id="camera-stage">
       <video id="cam-preview" autoplay playsinline muted></video>
-      <div class="cam-info">카메라 미리보기 (자동 저장은 다음 단계)</div>
-      <div class="cam-status status pending" id="cam-live-status">대기</div>
+      <div class="cam-badge live" id="cam-live-badge" style="display:none;">● REC</div>
+      <div class="cam-overlay" id="cam-overlay">
+        <div class="cam-overlay-text" id="cam-overlay-text">카메라 준비 중…</div>
+      </div>
     </div>
 
     <div class="meter-shell">
       <div class="digits empty" id="digits">숫자를 말하세요<span class="cursor"></span></div>
+    </div>
+
+    <div class="ocr-row" id="ocr-row" style="display:none;">
+      <div class="ocr-left">
+        <span class="ocr-label">카메라 인식</span>
+        <span class="ocr-value" id="ocr-value">-</span>
+      </div>
+      <span class="ocr-match" id="ocr-match"></span>
     </div>
 
     <div class="mic-row">
@@ -265,8 +368,8 @@
     <div class="transcript" id="transcript">&nbsp;</div>
 
     <div class="actions">
-      <button class="btn-redo" id="btn-clear">정정</button>
-      <button class="btn-ok" id="btn-ok" disabled>오케이</button>
+      <button class="btn-redo" id="btn-clear">다시 말하기</button>
+      <button class="btn-ok" id="btn-ok" disabled>저장하고 다음</button>
     </div>
     <button class="btn-mic" id="btn-mic">🎤 음성 인식 시작</button>
     <button class="btn-mic" id="btn-keypad-toggle">🔢 숫자로 입력 (음성 안 될 때)</button>
@@ -276,11 +379,20 @@
       <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
       <button class="wide" data-k="clear">지우기</button><button data-k="0">0</button><button class="wide" data-k="back">⌫</button>
     </div>
+
+    <div class="minimap" id="minimap">
+      <div class="minimap-title">현재 위치</div>
+      <div class="minimap-track" id="minimap-track"></div>
+      <div class="minimap-labels">
+        <span id="minimap-label-start">-</span>
+        <span id="minimap-label-end">-</span>
+      </div>
+    </div>
   </div>
 
   <div id="done-screen" style="display:none" class="done-banner">
-    <div class="big">202동 검침 완료</div>
-    <div>총 320건 기록됨. 아래에서 CSV로 내려받으세요.</div>
+    <div class="big" id="done-title">검침 완료</div>
+    <div id="done-sub">기록됨. 아래에서 CSV로 내려받으세요.</div>
   </div>
 
   <div class="log-section">
@@ -295,8 +407,9 @@
   </div>
 
   <div class="hint">
-    "숫자" 말하기 → "오케이"로 확정 · "정정"이라 말하면 다시 입력<br>
+    계량기를 보고 숫자를 말하세요 · "저장하고 다음"으로 확정 · "다시 말하기"로 재입력<br>
     새로고침해도 기록은 기기에 남아있습니다
+  </div>
   </div>
 
 </div>
@@ -318,24 +431,117 @@ if (!navigator.onLine) document.getElementById('offline-badge').classList.add('s
 // =====================================================================
 // 1. IndexedDB — 기기에 영구 저장 (새로고침/오프라인에도 데이터 유지)
 //    원칙: "서버를 믿지 않는다. 먼저 기기에 저장한다."
+//
+//    v3부터는 여러 현장(Preset)을 지원한다.
+//    - presets: 현장 구조 (어떤 호수가 있고, 무엇을 몇 개 검침하는지)
+//    - entries: 실제 검침 기록. 이제 presetId로 현장을 구분한다.
+//
+//    마이그레이션 원칙: v2까지 쌓인 기록은 전부 202동 검침이었으므로,
+//    버리지 않고 "내장 202동 프리셋"에 자동으로 귀속시킨다.
 // =====================================================================
 const DB_NAME = 'gumchim-db';
-const DB_VERSION = 2; // v2: keyPath를 자동증가 id → "호수_종류" 고유키로 변경 (DB가 중복 저장을 원천 차단)
+const DB_VERSION = 4;
 const STORE = 'entries';
+const PRESET_STORE = 'presets';
+const PHOTO_STORE = 'photos';
+const BUILTIN_202_PRESET_ID = 'builtin-202-water';
 let db = null;
+
+// 기존 202동 하드코딩과 완전히 동일한 순서로 만든 내장 프리셋.
+// (unit-major, meter-type-minor로 펼쳤을 때 예전 buildSequence()와 byte-equivalent —
+//  이 동등성은 별도 회귀 테스트로 검증되어 있다.)
+function buildBuiltin202Preset(){
+  const units = [];
+  for(let floor=20; floor>=1; floor--){
+    for(let unit=8; unit>=1; unit--){
+      units.push({ ho: String(floor) + String(unit).padStart(2, '0') });
+    }
+  }
+  return {
+    id: BUILTIN_202_PRESET_ID,
+    name: '202동 수도',
+    dong: '202동',
+    meterTypes: ['냉수', '온수'],
+    floorOrder: 'desc',
+    unitOrderWithinFloor: 'desc',
+    units: units,
+    builtin: true,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function dbKeyFor(presetId, ho, type){ return presetId + '_' + ho + '_' + type; }
 
 function openDB(){
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
     req.onupgradeneeded = (e) => {
       const _db = e.target.result;
-      // 스키마가 바뀌었으므로 기존 스토어가 있으면 지우고 새 keyPath로 재생성한다.
-      // (아직 현장 실사용 전 개발 단계라 데이터 마이그레이션은 필요 없음)
-      if (_db.objectStoreNames.contains(STORE)) {
-        _db.deleteObjectStore(STORE);
+      const tx = e.target.transaction;
+      const oldVersion = e.oldVersion;
+
+      // presets 스토어 — 없으면 새로 만들고, 내장 202동 프리셋을 반드시 보장한다.
+      let presetStore;
+      if(!_db.objectStoreNames.contains(PRESET_STORE)){
+        presetStore = _db.createObjectStore(PRESET_STORE, { keyPath: 'id' });
+      } else {
+        presetStore = tx.objectStore(PRESET_STORE);
       }
-      const store = _db.createObjectStore(STORE, { keyPath: 'key' });
-      store.createIndex('by_time', 'time');
+      presetStore.get(BUILTIN_202_PRESET_ID).onsuccess = (ev) => {
+        if(!ev.target.result){
+          presetStore.add(buildBuiltin202Preset());
+        }
+      };
+
+      // entries 재생성 + (필요시) v2 데이터 이관
+      // 주의: STORE가 이미 v3 스키마(presetId 포함)로 존재한다면 절대 다시 만들지 않는다 —
+      // v3 -> v4 업그레이드 같은 "관련 없는 스토어 추가" 상황에서 entries를 불필요하게 건드리면 안 된다.
+      const rebuildEntriesStore = (recordsToMigrate) => {
+        if(_db.objectStoreNames.contains(STORE)){
+          _db.deleteObjectStore(STORE);
+        }
+        const newStore = _db.createObjectStore(STORE, { keyPath: 'key' });
+        newStore.createIndex('by_time', 'time');
+        newStore.createIndex('by_preset', 'presetId');
+        (recordsToMigrate || []).forEach(rec => {
+          // v2 기록은 presetId 개념이 없었지만, 전부 202동 검침이었으므로
+          // 내장 202동 프리셋에 귀속시켜 살린다. 데이터를 버리지 않는다.
+          const presetId = BUILTIN_202_PRESET_ID;
+          newStore.add({
+            key: dbKeyFor(presetId, rec.ho, rec.type),
+            presetId: presetId,
+            ho: rec.ho,
+            type: rec.type,
+            value: rec.value,
+            time: rec.time
+          });
+        });
+      };
+
+      if(!_db.objectStoreNames.contains(STORE)){
+        // entries 자체가 아예 없는 경우 (신규 설치, 또는 v2에서 아직 한 번도 안 만든 경우)
+        rebuildEntriesStore([]);
+      } else if(oldVersion < 3){
+        // v2 스키마(presetId 없음)에서 올라오는 경우에만 이관한다.
+        const oldStore = tx.objectStore(STORE);
+        const getAllReq = oldStore.getAll();
+        getAllReq.onsuccess = () => {
+          const alreadyMigrated = getAllReq.result.length > 0 && getAllReq.result[0].presetId !== undefined;
+          if(alreadyMigrated){
+            // 이미 v3 형태 — 손대지 않는다 (안전망)
+            return;
+          }
+          rebuildEntriesStore(getAllReq.result);
+        };
+      }
+      // oldVersion >= 3이면 entries는 이미 presetId 스키마 — 그대로 둔다.
+
+      // photos 스토어 — v4에서 신규 추가. 검침 사진을 entry와 같은 key로 연결한다.
+      // 주의: 이번 단계는 "캡처가 가능하고 entry와 연결될 수 있는 구조"까지만 만든다.
+      // 보관 기간/용량 제한 같은 정책은 아직 정하지 않았으므로 여기서 임의로 만들지 않는다.
+      if(!_db.objectStoreNames.contains(PHOTO_STORE)){
+        _db.createObjectStore(PHOTO_STORE, { keyPath: 'key' });
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e.target.error);
@@ -364,6 +570,18 @@ function dbGetAll(){
   });
 }
 
+// 특정 현장(presetId)의 기록만 가져온다. 다른 현장의 데이터는 아예 건드리지 않는다.
+function dbGetEntriesForPreset(presetId){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly');
+    const store = tx.objectStore(STORE);
+    const idx = store.index('by_preset');
+    const req = idx.getAll(IDBKeyRange.only(presetId));
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
 function dbDelete(key){
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE, 'readwrite');
@@ -374,21 +592,63 @@ function dbDelete(key){
   });
 }
 
+function dbGetAllPresets(){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRESET_STORE, 'readonly');
+    const store = tx.objectStore(PRESET_STORE);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function dbSavePreset(preset){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PRESET_STORE, 'readwrite');
+    const store = tx.objectStore(PRESET_STORE);
+    const req = store.put(preset); // put: 같은 id면 덮어씀 (재import 허용)
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// 검침 사진 저장 — entry와 동일한 key로 연결한다 (한 검침항목당 사진 최대 1장).
+// 보관 기간/용량 제한 정책은 아직 없다: 이번 단계는 "캡처 → entry와 연결" 구조까지만.
+// 사진 저장이 실패해도 검침값 저장에는 영향이 없어야 하므로, 호출부에서 항상 별도로 감싸 쓴다.
+function dbSavePhoto(key, presetId, dataUrl){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PHOTO_STORE, 'readwrite');
+    const store = tx.objectStore(PHOTO_STORE);
+    const req = store.put({ key, presetId, dataUrl, time: new Date().toISOString() });
+    req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
 // =====================================================================
-// 2. 검침 순서: 20층→1층, 층내 8→1, 각 호수 냉수→온수
+// 2. 검침 순서 — 이제 하드코딩이 아니라 선택된 Preset에서 만든다.
+//    규칙(회귀 테스트로 검증됨): preset.units 순서를 그대로 따라가며,
+//    각 호수 안에서는 preset.meterTypes 순서대로 펼친다 (unit-major, type-minor).
+//    이 규칙으로 만든 202동 시퀀스는 예전 하드코딩 buildSequence()와 완전히 동일하다.
 // =====================================================================
-function buildSequence(){
+function buildSequenceFromPreset(preset){
   const seq = [];
-  for(let floor=20; floor>=1; floor--){
-    for(let unit=8; unit>=1; unit--){
-      const ho = floor*100 + unit;
-      seq.push({ho, type:'냉수'});
-      seq.push({ho, type:'온수'});
-    }
-  }
+  preset.units.forEach(u => {
+    preset.meterTypes.forEach(t => seq.push({ ho: u.ho, type: t }));
+  });
   return seq;
 }
-const SEQUENCE = buildSequence();
+
+// 냉수/온수는 기존 색을 그대로 유지하고, 그 외 타입은 중립 색으로 처리한다.
+// (다중 타입용 색상 체계 설계는 이번 범위 밖 — neutral fallback 하나면 충분)
+function meterTypeClass(type){
+  if(type === '냉수') return 'cold';
+  if(type === '온수') return 'hot';
+  return 'neutral';
+}
+
+let currentPreset = null;
+let SEQUENCE = [];
 let idx = 0;
 let staged = '';
 let log = [];
@@ -409,11 +669,24 @@ const activeScreen = document.getElementById('active-screen');
 const doneScreen = document.getElementById('done-screen');
 const btnExport = document.getElementById('btn-export');
 const camPreview = document.getElementById('cam-preview');
-const camLiveStatus = document.getElementById('cam-live-status');
+const camLiveBadge = document.getElementById('cam-live-badge');
+const camOverlay = document.getElementById('cam-overlay');
+const camOverlayText = document.getElementById('cam-overlay-text');
+const ocrRow = document.getElementById('ocr-row');
+const ocrValueEl = document.getElementById('ocr-value');
+const ocrMatchEl = document.getElementById('ocr-match');
+const minimapTrack = document.getElementById('minimap-track');
+const minimapLabelStart = document.getElementById('minimap-label-start');
+const minimapLabelEnd = document.getElementById('minimap-label-end');
+const topbarDong = document.getElementById('topbar-dong');
+const doneTitle = document.getElementById('done-title');
+const doneSub = document.getElementById('done-sub');
 
-// 각 검침 항목의 고유 키 (동-호수-종류). 임의 삭제가 일어나도
+// 각 검침 항목의 고유 키 (호수_종류). 임의 삭제가 일어나도
 // "몇 건 했는지 개수"가 아니라 "이 항목을 실제로 했는가"로 다음 위치를 찾는다.
 // 원칙: 과거 항목이 삭제돼도 이후 항목이 밀려서 중복 기록되면 안 된다.
+// (presetId는 여기 포함하지 않는다 — log가 이미 현재 preset으로만 필터링돼 있으므로,
+//  DB에 실제로 쓰는 key에서만 dbKeyFor()로 presetId를 붙인다.)
 function entryKey(item){ return item.ho + '_' + item.type; }
 
 function findNextIdx(){
@@ -426,18 +699,60 @@ function findNextIdx(){
 
 function renderCurrent(){
   idx = findNextIdx();
+  // 항목이 바뀌면 이전 항목에 걸려있던 OCR 요청은 무효화한다 (낡은 결과가 새 항목에 잘못 표시되는 것 방지)
+  ocrToken++;
+  clearTimeout(ocrDebounceTimer);
+  ocrStaged = null;
   if(idx >= SEQUENCE.length){
     activeScreen.style.display = 'none';
     doneScreen.style.display = 'block';
     progressEl.textContent = SEQUENCE.length + ' / ' + SEQUENCE.length;
+    doneTitle.textContent = (currentPreset ? currentPreset.name : '') + ' 검침 완료';
+    doneSub.textContent = '총 ' + SEQUENCE.length + '건 기록됨. 아래에서 CSV/엑셀로 내려받으세요.';
     return;
   }
+  activeScreen.style.display = '';
+  doneScreen.style.display = 'none';
   const cur = SEQUENCE[idx];
   hoLabel.textContent = cur.ho + '호';
   typeLabel.textContent = cur.type;
-  typeLabel.className = 'type ' + (cur.type === '냉수' ? 'cold' : 'hot');
+  typeLabel.className = 'type ' + meterTypeClass(cur.type);
   progressEl.textContent = (idx+1) + ' / ' + SEQUENCE.length;
   renderStaged();
+  renderMinimap();
+}
+
+// 진행 미니맵 — 건물 도면이 아니라 "전체 검침 중 어디쯤인가"만 보여준다.
+// Preset의 실제 units 순서를 기반으로, 세대 단위(냉수+온수 등 항목 전부 완료 여부)로 완료 표시한다.
+// 세대 수가 많으면 화면 폭에 맞춰 구간으로 묶어서 보여준다 (세대 하나하나 텍스트는 표시하지 않음).
+function renderMinimap(){
+  if(!currentPreset || !currentPreset.units || currentPreset.units.length === 0){
+    minimapTrack.innerHTML = '';
+    return;
+  }
+  const units = currentPreset.units;
+  const totalPerUnit = currentPreset.meterTypes.length;
+  const doneCountByHo = {};
+  log.forEach(e => { doneCountByHo[e.ho] = (doneCountByHo[e.ho] || 0) + 1; });
+
+  const currentHo = (idx < SEQUENCE.length) ? SEQUENCE[idx].ho : null;
+  const currentUnitIndex = units.findIndex(u => u.ho === currentHo);
+
+  const MAX_SEGMENTS = 40;
+  const segCount = Math.min(units.length, MAX_SEGMENTS);
+  const bucketSize = Math.ceil(units.length / segCount);
+
+  minimapTrack.innerHTML = '';
+  for(let i = 0; i < units.length; i += bucketSize){
+    const bucketUnits = units.slice(i, i + bucketSize);
+    const bucketDone = bucketUnits.every(u => (doneCountByHo[u.ho] || 0) >= totalPerUnit);
+    const bucketHasCurrent = currentUnitIndex >= i && currentUnitIndex < i + bucketSize;
+    const seg = document.createElement('div');
+    seg.className = 'mm-seg' + (bucketHasCurrent ? ' current' : (bucketDone ? ' done' : ''));
+    minimapTrack.appendChild(seg);
+  }
+  minimapLabelStart.textContent = units[0].ho + '호';
+  minimapLabelEnd.textContent = units[units.length - 1].ho + '호';
 }
 
 function renderStaged(){
@@ -449,6 +764,105 @@ function renderStaged(){
     digitsEl.textContent = staged;
     digitsEl.classList.remove('empty');
     btnOk.disabled = false;
+  }
+  scheduleOcrCheck();
+}
+
+// =====================================================================
+// OCR 어댑터 경계 — 카메라 인식은 보조 입력이지 Primary 입력이 아니다.
+// UI/저장 로직은 이 함수의 반환 형태({rawText, normalizedValue, confidence} | null)에만 의존한다.
+// 실제 엔진을 바꾸거나 개선하려면 runOCR() 내부만 교체하면 된다.
+//
+// 절대 원칙: ocrStaged는 화면에 "참고"로만 보여준다.
+// staged(사람이 말하거나 입력한 값)를 OCR 결과로 자동 덮어쓰는 코드는 어디에도 없다 —
+// 최종 저장값은 항상 staged이고, confirmCurrent()도 staged만 저장한다.
+// =====================================================================
+let ocrStaged = null;
+let ocrToken = 0;
+let ocrDebounceTimer = null;
+let tesseractWorkerPromise = null;
+
+function scheduleOcrCheck(){
+  clearTimeout(ocrDebounceTimer);
+  if(staged === '' || !camStream){
+    ocrStaged = null;
+    renderOcrStatus();
+    return;
+  }
+  // 말하거나 입력하는 도중 매 글자마다 OCR을 돌리지 않도록 살짝 기다렸다가 실행한다.
+  ocrDebounceTimer = setTimeout(runOcrCheckNow, 600);
+}
+
+async function runOcrCheckNow(){
+  const myToken = ++ocrToken;
+  const frame = captureFrame();
+  if(!frame) return;
+  ocrRow.style.display = 'flex';
+  ocrValueEl.textContent = '인식 중…';
+  ocrMatchEl.textContent = '';
+  const result = await runOCR(frame);
+  if(myToken !== ocrToken) return; // 그 사이 다음 항목으로 넘어갔거나 값이 또 바뀜 — 낡은 결과는 버린다
+  ocrStaged = result ? result.normalizedValue : null;
+  renderOcrStatus();
+}
+
+function renderOcrStatus(){
+  if(ocrStaged === null){
+    ocrRow.style.display = 'none';
+    return;
+  }
+  ocrRow.style.display = 'flex';
+  ocrValueEl.textContent = ocrStaged;
+  if(ocrStaged === staged){
+    ocrMatchEl.textContent = '✓ 음성과 일치';
+    ocrMatchEl.className = 'ocr-match ok';
+  } else {
+    ocrMatchEl.textContent = '⚠ 확인 필요';
+    ocrMatchEl.className = 'ocr-match warn';
+  }
+}
+
+// Tesseract.js는 클릭 시점이 아니라 카메라가 켜지고 실제로 숫자가 잡힐 때 필요하므로
+// 첫 OCR 시도 시점에 지연 로드한다. 오프라인이면 실패하고, 그러면 runOCR()이 null을 반환해
+// OCR 없이 진행하는 것과 똑같이 취급된다 (검침 흐름을 막지 않는다).
+function loadTesseractScript(){
+  if(window.Tesseract) return Promise.resolve();
+  if(loadTesseractScript._p) return loadTesseractScript._p;
+  loadTesseractScript._p = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('OCR 라이브러리를 불러오지 못했습니다'));
+    document.head.appendChild(script);
+  });
+  return loadTesseractScript._p;
+}
+
+async function getTesseractWorker(){
+  if(tesseractWorkerPromise) return tesseractWorkerPromise;
+  tesseractWorkerPromise = (async () => {
+    await loadTesseractScript();
+    const worker = await Tesseract.createWorker('eng');
+    await worker.setParameters({ tessedit_char_whitelist: '0123456789' });
+    return worker;
+  })();
+  return tesseractWorkerPromise;
+}
+
+// 이번 단계는 "최소 수준 실험"이다 — ROI 지정이나 전처리 없이 캡처된 프레임 전체를
+// 그대로 숫자 전용으로 인식 시도한다. 정확도는 검증되지 않았고, 실제 계량기 앞에서
+// 라이브 테스트가 필요하다. 실패하면 그냥 null을 반환해 OCR 없이 진행한다.
+async function runOCR(frameDataUrl){
+  try{
+    const worker = await getTesseractWorker();
+    const { data } = await worker.recognize(frameDataUrl);
+    const rawText = ((data && data.text) || '').trim();
+    const normalizedValue = rawText.replace(/[^0-9]/g, '');
+    if(!normalizedValue) return null;
+    return { rawText, normalizedValue, confidence: (data.confidence || 0) / 100 };
+  }catch(err){
+    console.warn('OCR 실패 (검침 흐름에는 영향 없음)', err);
+    return null;
   }
 }
 
@@ -466,7 +880,7 @@ function renderLog(){
     row.innerHTML = `
       <div class="li-left">
         <span class="li-ho">${item.ho}호</span>
-        <span class="li-type ${item.type==='냉수'?'cold':'hot'}">${item.type}</span>
+        <span class="li-type ${meterTypeClass(item.type)}">${item.type}</span>
       </div>
       <div class="li-left">
         <span class="li-val">${item.value}</span>
@@ -495,7 +909,12 @@ async function confirmCurrent(){
   btnOk.disabled = true;
   try{
     const cur = SEQUENCE[idx];
-    const entry = { key: entryKey(cur), ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString() };
+    const entryKeyStr = dbKeyFor(currentPreset.id, cur.ho, cur.type);
+    const entry = {
+      key: entryKeyStr,
+      presetId: currentPreset.id,
+      ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString()
+    };
     try{
       await dbAdd(entry);
       log.push(entry);
@@ -504,6 +923,17 @@ async function confirmCurrent(){
       // DB가 이미 막아줬으니 화면만 정상 흐름으로 되돌린다.
       console.warn('중복 확정 감지 — 이미 저장된 항목, 무시함', dbErr);
     }
+
+    // 사진은 검침값 저장과 완전히 분리된 부가 동작이다.
+    // 실패하거나 카메라가 없어도 검침 자체(위의 dbAdd)에는 절대 영향을 주지 않는다.
+    // 보관 기간/용량 정책은 아직 정해지지 않았으므로 여기서는 캡처→연결 구조까지만 만든다.
+    try{
+      const frame = captureFrame();
+      if(frame) await dbSavePhoto(entryKeyStr, currentPreset.id, frame);
+    }catch(photoErr){
+      console.warn('사진 저장 실패 (검침값에는 영향 없음)', photoErr);
+    }
+
     renderLog();
     staged = '';
     renderCurrent();
@@ -547,13 +977,14 @@ btnExportXlsx.addEventListener('click', async ()=>{
   btnExportXlsx.disabled = true;
   try{
     await loadSheetJS();
+    const dongLabel = currentPreset ? currentPreset.dong : '';
     const rows = [['동','호수','종류','검침값','시각']];
-    log.forEach(item => rows.push(['202동', item.ho, item.type, item.value, item.time]));
+    log.forEach(item => rows.push([dongLabel, item.ho, item.type, item.value, item.time]));
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{wch:8},{wch:8},{wch:8},{wch:10},{wch:22}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '검침결과');
-    XLSX.writeFile(wb, '202동_검침_' + new Date().toISOString().slice(0,10) + '.xlsx');
+    XLSX.writeFile(wb, (currentPreset ? currentPreset.name : '검침') + '_' + new Date().toISOString().slice(0,10) + '.xlsx');
   }catch(err){
     console.error(err);
     alert('오프라인이라 엑셀 내보내기를 쓸 수 없습니다. 대신 CSV 내보내기를 눌러주세요 (같은 데이터입니다).');
@@ -567,15 +998,16 @@ btnExportXlsx.addEventListener('click', async ()=>{
 // 3. CSV 내보내기
 // =====================================================================
 btnExport.addEventListener('click', ()=>{
+  const dongLabel = currentPreset ? currentPreset.dong : '';
   let csv = '동,호수,종류,검침값,시각\n';
   log.forEach(item=>{
-    csv += `202동,${item.ho},${item.type},${item.value},${item.time}\n`;
+    csv += `${dongLabel},${item.ho},${item.type},${item.value},${item.time}\n`;
   });
   const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = '202동_검침_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.download = (currentPreset ? currentPreset.name : '검침') + '_' + new Date().toISOString().slice(0,10) + '.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -704,24 +1136,43 @@ btnMic.addEventListener('click', ()=>{
 });
 
 // =====================================================================
-// 6. 카메라 (증빙 사진 인프라 — 지금은 실시간 미리보기까지만)
-//    다음 단계: "오케이" 확정 순간 프레임을 자동 캡처해 기록에 첨부
+// 6. 카메라 — 이제 실시간 프리뷰 + 확정 순간 프레임 캡처까지 실제로 연결한다.
+//    카메라는 어디까지나 보조 장치다: 거부/미지원이어도 검침 자체는 계속돼야 한다.
 // =====================================================================
 let camStream = null;
 async function startCamera(){
+  camOverlayText.textContent = '카메라 준비 중…';
   try{
     camStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }, audio: false
+      video: { facingMode: { ideal: 'environment' } }, audio: false
     });
     camPreview.srcObject = camStream;
-    camLiveStatus.textContent = '켜짐';
-    camLiveStatus.className = 'cam-status status ok';
+    camOverlay.classList.add('hidden');
+    camLiveBadge.style.display = 'block';
     return true;
   }catch(err){
-    camLiveStatus.textContent = '거부됨';
-    camLiveStatus.className = 'cam-status status fail';
+    camOverlay.classList.remove('hidden');
+    camOverlayText.textContent = '카메라를 쓸 수 없어요 — 음성/키패드만으로 검침을 계속할 수 있습니다';
+    camLiveBadge.style.display = 'none';
     console.error('카메라 오류', err);
     return false;
+  }
+}
+
+// 지금 카메라 프레임을 캡처해 JPEG dataURL로 돌려준다.
+// 카메라가 없거나 아직 준비 전이면 null — 호출부는 이걸 정상 상황으로 취급해야 한다.
+function captureFrame(){
+  if(!camStream || !camPreview.videoWidth) return null;
+  try{
+    const canvas = document.createElement('canvas');
+    canvas.width = camPreview.videoWidth;
+    canvas.height = camPreview.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(camPreview, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
+  }catch(err){
+    console.warn('프레임 캡처 실패', err);
+    return null;
   }
 }
 
@@ -782,14 +1233,126 @@ async function skipGateIfAlreadyGranted(){
 }
 
 // =====================================================================
-// 8. 초기화
+// 8. 현장(Preset) 선택 화면
+// =====================================================================
+const siteSelectScreen = document.getElementById('site-select-screen');
+const siteContent = document.getElementById('site-content');
+const topbarEl = document.getElementById('topbar');
+const presetListEl = document.getElementById('preset-list');
+const btnSwitchSite = document.getElementById('btn-switch-site');
+const presetImportInput = document.getElementById('preset-import-input');
+
+function slugify(s){
+  return (s || '').toString().trim().replace(/[^a-zA-Z0-9가-힣]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// 같은 PC 구조 파일(같은 동 + 같은 검침항목)을 다시 불러오면 새 현장이 아니라
+// 같은 현장을 갱신하도록 결정적 id를 쓴다. (진행 기록을 잃지 않기 위함)
+function presetIdFromStructure(s){
+  return 'site-' + slugify(s.dong) + '-' + slugify((s.meterTypes || []).join('-'));
+}
+
+async function presetProgress(preset){
+  const entries = await dbGetEntriesForPreset(preset.id);
+  const total = preset.units.length * preset.meterTypes.length;
+  return { done: entries.length, total };
+}
+
+async function renderPresetList(){
+  const presets = await dbGetAllPresets();
+  presetListEl.innerHTML = '';
+  for(const preset of presets){
+    const { done, total } = await presetProgress(preset);
+    const card = document.createElement('div');
+    card.className = 'preset-card';
+    const isDone = total > 0 && done >= total;
+    const btnLabel = done === 0 ? '시작' : (isDone ? '완료' : '이어하기');
+    card.innerHTML = `
+      <div class="pc-info">
+        <div class="pc-name">${preset.name}</div>
+        <div class="pc-meta">${preset.units.length}세대 · ${preset.meterTypes.join('/')}</div>
+        <div class="pc-progress">${done} / ${total}</div>
+      </div>
+      <button class="pc-btn ${isDone ? 'done' : ''}">${btnLabel}</button>
+    `;
+    card.addEventListener('click', () => selectPreset(preset));
+    presetListEl.appendChild(card);
+  }
+}
+
+async function selectPreset(preset){
+  currentPreset = preset;
+  SEQUENCE = buildSequenceFromPreset(preset);
+  log = await dbGetEntriesForPreset(preset.id);
+  log.sort((a,b) => a.time.localeCompare(b.time));
+
+  topbarDong.textContent = preset.name;
+  document.title = preset.name + ' 검침';
+
+  siteSelectScreen.classList.add('hidden');
+  siteContent.classList.add('show');
+  topbarEl.style.display = 'flex';
+
+  renderLog();
+  renderCurrent();
+
+  // 권한 게이트를 건너뛴 경우 startCamera()가 아직 한 번도 호출 안 됐을 수 있다.
+  // 그 상태로 두면 "카메라 준비 중…" 문구가 영원히 안 바뀌므로, 현장에 들어올 때
+  // 한 번은 시도해본다. 실패해도(거부/미지원) 검침 자체엔 전혀 영향 없다.
+  if(!camStream){ startCamera(); }
+}
+
+btnSwitchSite.addEventListener('click', async () => {
+  // Preset 전환은 다른 Preset의 entries를 절대 건드리지 않는다.
+  // 이미 confirmCurrent()에서 매 확정마다 즉시 DB에 저장하고 있으므로,
+  // 여기서는 화면만 목록으로 되돌리면 된다 — 진행 기록은 그대로 남아있다.
+  siteContent.classList.remove('show');
+  topbarEl.style.display = 'none';
+  siteSelectScreen.classList.remove('hidden');
+  await renderPresetList();
+});
+
+presetImportInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!data.dong || !Array.isArray(data.meterTypes) || !Array.isArray(data.units) || data.units.length === 0){
+      alert('올바른 구조 파일이 아닙니다. PC 구조 확인 도구에서 저장한 JSON인지 확인해주세요.');
+      e.target.value = '';
+      return;
+    }
+    const meterLabel = data.meterTypes.length <= 2
+      ? data.meterTypes.join('/')
+      : (data.meterTypes[0] + ' 외 ' + (data.meterTypes.length - 1) + '개');
+    const preset = {
+      id: presetIdFromStructure(data),
+      name: data.dong + ' ' + meterLabel,
+      dong: data.dong,
+      meterTypes: data.meterTypes,
+      floorOrder: data.floorOrder || 'desc',
+      unitOrderWithinFloor: data.unitOrderWithinFloor || 'desc',
+      units: data.units,
+      builtin: false,
+      createdAt: new Date().toISOString()
+    };
+    await dbSavePreset(preset);
+    e.target.value = '';
+    await renderPresetList();
+  }catch(err){
+    console.error(err);
+    alert('파일을 읽지 못했습니다. JSON 형식인지 확인해주세요.');
+    e.target.value = '';
+  }
+});
+
+// =====================================================================
+// 9. 초기화
 // =====================================================================
 (async function init(){
   db = await openDB();
-  log = await dbGetAll();
-  log.sort((a,b) => a.time.localeCompare(b.time));
-  renderLog();
-  renderCurrent();
+  await renderPresetList();
   setupRecognition();
   await skipGateIfAlreadyGranted();
 })();
