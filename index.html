@@ -26,19 +26,21 @@
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{
-    margin:0; padding:0; min-height:100%;
+    margin:0; padding:0; height:100%;
     background:var(--ink);
     color:var(--paper);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
-    overflow-x:hidden;
+    overflow:hidden;
   }
   .app{
     max-width:520px;
     margin:0 auto;
-    min-height:100vh;
+    height:100vh; /* dvh 미지원 브라우저용 폴백 */
+    height:100dvh;
     display:flex;
     flex-direction:column;
-    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 28px);
+    overflow:hidden;
+    padding:calc(env(safe-area-inset-top) + 10px) 14px calc(env(safe-area-inset-bottom) + 10px);
   }
 
   /* 최초 진입: 권한 게이트 */
@@ -79,22 +81,25 @@
   /* 상단 바 */
   .topbar{
     display:flex; justify-content:space-between; align-items:baseline;
-    padding:6px 4px 14px;
-    border-bottom:1px solid var(--line);
-    margin-bottom:16px;
+    padding:2px 4px 8px;
+    flex:0 0 auto;
   }
-  .topbar .dong{ font-size:15px; letter-spacing:0.06em; color:var(--muted); text-transform:uppercase; }
+  .topbar .dong{ font-size:14px; letter-spacing:0.06em; color:var(--muted); text-transform:uppercase; }
   .topbar .progress{ font-size:13px; color:var(--teal); font-variant-numeric:tabular-nums; }
-
-  .location{ text-align:center; margin-bottom:10px; }
-  .loc-badge{
-    display:inline-block; font-size:11px; font-weight:700; letter-spacing:0.06em;
-    color:var(--ink); background:var(--teal); padding:3px 10px; border-radius:999px; margin-bottom:6px;
+  .top-progress-bar{
+    flex:0 0 auto; height:4px; background:var(--panel-2); border-radius:2px; overflow:hidden; margin-bottom:10px;
   }
-  .location .ho{ font-size:42px; font-weight:700; letter-spacing:0.01em; color:var(--paper); }
+  .top-progress-fill{ height:100%; background:var(--amber); width:0%; transition:width .2s ease; }
+
+  .location{ text-align:center; flex:0 0 auto; margin-bottom:4px; }
+  .loc-badge{
+    display:inline-block; font-size:10px; font-weight:700; letter-spacing:0.06em;
+    color:var(--ink); background:var(--teal); padding:2px 9px; border-radius:999px; margin-bottom:3px;
+  }
+  .location .ho{ font-size:30px; font-weight:700; letter-spacing:0.01em; color:var(--paper); line-height:1.15; }
   .location .type{
-    display:inline-block; margin-top:6px; padding:4px 16px; border-radius:999px;
-    font-size:14px; font-weight:600; letter-spacing:0.08em;
+    display:inline-block; margin-top:2px; padding:2px 12px; border-radius:999px;
+    font-size:12px; font-weight:600; letter-spacing:0.08em;
   }
   .type.cold{ background:rgba(79,209,197,0.14); color:var(--teal); border:1px solid rgba(79,209,197,0.35);}
   .type.hot{ background:rgba(255,122,86,0.14); color:var(--warm); border:1px solid rgba(255,122,86,0.35);}
@@ -103,31 +108,35 @@
   .meter-shell{
     background:linear-gradient(180deg,var(--panel-2),var(--panel));
     border:1px solid var(--line);
-    border-radius:14px;
-    padding:22px 18px;
-    margin:18px 0 14px;
+    border-radius:12px;
+    padding:8px 14px;
+    margin:6px 0;
     box-shadow:inset 0 2px 10px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.02);
     position:relative;
+    flex:0 0 auto;
   }
   .meter-shell::before{
-    content:"㎥"; position:absolute; top:10px; right:16px;
-    font-size:12px; color:var(--muted); letter-spacing:0.1em;
+    content:"㎥"; position:absolute; top:6px; right:12px;
+    font-size:10px; color:var(--muted); letter-spacing:0.1em;
   }
   .digits{
     font-family:"SF Mono","JetBrains Mono","Consolas",monospace;
-    font-size:64px; font-weight:700; text-align:center; letter-spacing:0.06em;
-    color:var(--amber); text-shadow:0 0 18px rgba(255,179,0,0.35);
-    min-height:78px; line-height:78px; word-break:break-all;
+    font-size:40px; font-weight:700; text-align:center; letter-spacing:0.05em;
+    color:var(--amber); text-shadow:0 0 14px rgba(255,179,0,0.3);
+    min-height:46px; line-height:46px; word-break:break-all;
   }
-  .digits.empty{ color:var(--amber-dim); }
+  .digits.empty{ color:var(--amber-dim); font-size:16px; }
   .digits .cursor{
-    display:inline-block; width:3px; height:48px; background:var(--amber);
+    display:inline-block; width:2px; height:28px; background:var(--amber);
     margin-left:4px; vertical-align:middle; animation:blink 1s step-start infinite;
   }
   @keyframes blink{ 50%{opacity:0;} }
 
-  .mic-row{ display:flex; align-items:center; justify-content:center; gap:10px; margin:6px 0 4px; min-height:22px; }
-  .mic-dot{ width:10px; height:10px; border-radius:50%; background:var(--muted); }
+  .mic-status-line{
+    display:flex; align-items:center; gap:6px; flex:0 0 auto;
+    padding:2px 4px; min-height:16px;
+  }
+  .mic-dot{ width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
   .mic-dot.live{
     background:var(--danger); box-shadow:0 0 0 0 rgba(255,82,82,0.6); animation:pulse 1.4s infinite;
   }
@@ -136,21 +145,25 @@
     70%{box-shadow:0 0 0 10px rgba(255,82,82,0);}
     100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}
   }
-  .mic-text{ font-size:13px; color:var(--muted); }
-  .transcript{ text-align:center; font-size:13px; color:var(--muted); min-height:18px; margin-bottom:10px; padding:0 10px; }
+  .mic-text{ font-size:11px; color:var(--muted); flex-shrink:0; }
+  .transcript{
+    font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis;
+    white-space:nowrap; flex:1; min-width:0;
+  }
 
-  /* 대형 카메라 프리뷰 — 검침 화면의 시각적 중심 */
+  /* 대형 카메라 프리뷰 — 남는 세로 공간을 그대로 채운다 (화면마다 크기가 자동으로 맞춰짐) */
   .camera-stage{
-    position:relative; width:100%; aspect-ratio:4/3;
-    background:#000; border-radius:16px; overflow:hidden;
-    border:1px solid var(--line); margin-top:12px;
+    position:relative; width:100%;
+    flex:1 1 auto; min-height:80px;
+    background:#000; border-radius:14px; overflow:hidden;
+    border:1px solid var(--line);
   }
   .camera-stage video{
     width:100%; height:100%; object-fit:cover; display:block;
   }
   .cam-badge{
-    position:absolute; top:10px; left:10px; font-size:11px; font-weight:800;
-    padding:4px 9px; border-radius:6px; letter-spacing:0.04em;
+    position:absolute; top:8px; left:8px; font-size:10px; font-weight:800;
+    padding:3px 8px; border-radius:6px; letter-spacing:0.04em;
   }
   .cam-badge.live{ background:rgba(255,82,82,0.9); color:#fff; }
   .cam-overlay{
@@ -159,53 +172,86 @@
   }
   .cam-overlay.hidden{ display:none; }
   .cam-overlay-text{
-    color:var(--muted); font-size:13px; text-align:center; padding:0 20px; line-height:1.6;
+    color:var(--muted); font-size:12px; text-align:center; padding:0 20px; line-height:1.5;
   }
 
   /* 음성값 ↔ 카메라 인식값 비교 */
   .ocr-row{
     display:flex; align-items:center; justify-content:space-between;
-    padding:8px 4px 4px; font-size:13px;
+    padding:4px 4px; font-size:12px; flex:0 0 auto; min-height:0;
   }
-  .ocr-left{ display:flex; align-items:center; gap:8px; }
+  .ocr-left{ display:flex; align-items:center; gap:6px; }
   .ocr-label{ color:var(--muted); }
   .ocr-value{ font-family:"SF Mono","JetBrains Mono",monospace; color:var(--paper); font-weight:700; }
-  .ocr-match{ font-weight:700; }
+  .ocr-match{ font-weight:700; font-size:12px; }
   .ocr-match.ok{ color:var(--good); }
   .ocr-match.warn{ color:var(--warm); }
 
-  .actions{ display:flex; gap:10px; margin-top:10px; }
+  .actions{ display:flex; gap:8px; flex:0 0 auto; margin:6px 0; }
   button{ font-family:inherit; border:none; cursor:pointer; }
   .btn-ok{
-    flex:1; background:var(--amber); color:#1a1400; font-size:22px; font-weight:800;
-    padding:20px 0; border-radius:14px; letter-spacing:0.02em;
+    flex:1; background:var(--amber); color:#1a1400; font-size:17px; font-weight:800;
+    padding:13px 0; border-radius:12px; letter-spacing:0.02em;
     transition:transform .08s ease, opacity .15s ease;
   }
   .btn-ok:active{ transform:scale(0.97); }
   .btn-ok:disabled{ opacity:0.35; }
   .btn-redo{
-    width:76px; background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
-    border-radius:14px; font-size:13px;
+    width:70px; background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
+    border-radius:12px; font-size:12px;
   }
+  .secondary-row{ display:flex; gap:8px; flex:0 0 auto; }
   .btn-mic{
-    width:100%; margin-top:10px; background:transparent; border:1px solid var(--line);
-    color:var(--muted); padding:12px 0; border-radius:12px; font-size:14px;
+    flex:1; background:transparent; border:1px solid var(--line);
+    color:var(--muted); padding:9px 0; border-radius:10px; font-size:12px;
   }
   .btn-mic.on{ color:var(--teal); border-color:rgba(79,209,197,0.4); }
 
-  /* 숫자 키패드 백업 — 음성이 안 통할 때(오프라인 등) 확실히 동작하는 경로 */
-  .keypad{
-    display:none; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:10px;
+  /* 숫자 키패드 백업 — 인라인이 아니라 오버레이 모달로 띄운다 (레이아웃 높이에 영향 없음) */
+  .keypad-overlay{
+    display:none; position:fixed; inset:0; z-index:40;
+    background:rgba(0,0,0,0.6); align-items:flex-end; justify-content:center;
   }
-  .keypad.show{ display:grid; }
+  .keypad-overlay.show{ display:flex; }
+  .keypad-sheet{
+    width:100%; max-width:520px; background:var(--panel); border-radius:18px 18px 0 0;
+    padding:16px 14px calc(env(safe-area-inset-bottom) + 14px);
+  }
+  .keypad-sheet-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+  }
+  .keypad-sheet-head span{ font-size:13px; color:var(--muted); }
+  .keypad-close{
+    background:transparent; color:var(--muted); border:1px solid var(--line);
+    padding:5px 12px; border-radius:8px; font-size:12px;
+  }
+  .keypad{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;
+  }
   .keypad button{
-    background:var(--panel); border:1px solid var(--line); color:var(--paper);
+    background:var(--panel-2); border:1px solid var(--line); color:var(--paper);
     font-size:22px; font-weight:700; padding:16px 0; border-radius:12px;
   }
-  .keypad button:active{ background:var(--panel-2); }
+  .keypad button:active{ background:#223129; }
   .keypad button.wide{ font-size:15px; color:var(--muted); }
 
-  .log-section{ margin-top:26px; }
+  /* 기록 패널 — 평소엔 숨겨져 있고, 버튼으로 열어야 보이는 별도 화면.
+     핵심 검침 루프(active-screen)는 이 패널과 무관하게 항상 한 화면에 고정된다. */
+  #records-panel{
+    display:none; position:fixed; inset:0; z-index:30; background:var(--ink);
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 14px);
+    overflow-y:auto;
+  }
+  #records-panel.show{ display:block; }
+  .records-head{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
+  }
+  .records-head h1{ font-size:18px; margin:0; }
+  .btn-close-records{
+    background:transparent; border:1px solid var(--line); color:var(--paper);
+    padding:6px 14px; border-radius:8px; font-size:13px;
+  }
+  .log-section{}
   .log-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
   .log-header h2{
     font-size:13px; color:var(--muted); font-weight:600; letter-spacing:0.06em;
@@ -215,7 +261,7 @@
     font-size:12px; color:var(--teal); background:transparent;
     border:1px solid rgba(79,209,197,0.3); padding:6px 10px; border-radius:8px;
   }
-  .log-list{ display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; }
+  .log-list{ display:flex; flex-direction:column; gap:6px; }
   .log-item{
     display:flex; align-items:center; justify-content:space-between;
     background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:14px;
@@ -230,40 +276,26 @@
   .log-item .li-del{ color:var(--danger); background:transparent; font-size:12px; padding:4px 8px;}
   .log-empty{ color:var(--muted); font-size:13px; text-align:center; padding:16px 0; }
 
-  .done-banner{ text-align:center; padding:40px 10px; color:var(--teal); }
+  .done-banner{ text-align:center; padding:40px 10px; color:var(--teal); flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .done-banner .big{ font-size:22px; font-weight:800; margin-bottom:8px; }
 
   .hint{ text-align:center; font-size:12px; color:var(--muted); margin-top:14px; line-height:1.6; }
 
-  /* 진행 미니맵 — 건물 도면이 아니라 "전체 중 어디쯤인지"만 보여주는 용도 */
-  .minimap{ margin-top:22px; }
-  .minimap-title{ font-size:11px; color:var(--muted); text-align:center; margin-bottom:6px; letter-spacing:0.04em; }
-  .minimap-track{ display:flex; gap:2px; }
-  .minimap-track .mm-seg{
-    flex:1; height:8px; border-radius:2px; background:var(--panel-2); border:1px solid var(--line);
-    position:relative;
-  }
-  .minimap-track .mm-seg.done{ background:var(--good); border-color:var(--good); }
-  .minimap-track .mm-seg.current{ background:var(--amber); border-color:var(--amber); }
-  .minimap-track .mm-seg.current::after{
-    content:''; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
-    border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--amber);
-  }
-  .minimap-labels{
-    display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:6px;
-  }
   .offline-badge{
-    display:none; text-align:center; font-size:12px; color:var(--warm);
+    display:none; text-align:center; font-size:11px; color:var(--warm);
     background:rgba(255,122,86,0.1); border:1px solid rgba(255,122,86,0.3);
-    border-radius:10px; padding:8px; margin-bottom:12px;
+    border-radius:8px; padding:5px; margin-bottom:6px; flex:0 0 auto;
   }
   .offline-badge.show{ display:block; }
 
-  /* 현장(Preset) 선택 화면 */
-  #site-select-screen{ display:block; }
+  /* 현장(Preset) 선택 화면 — 목록은 스크롤 가능(핵심 검침 루프가 아니므로 괜찮음) */
+  #site-select-screen{ display:block; flex:1; min-height:0; overflow-y:auto; }
   #site-select-screen.hidden{ display:none; }
   #site-content{ display:none; }
-  #site-content.show{ display:block; }
+  #site-content.show{ display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden; }
+  #active-screen{
+    display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;
+  }
   .site-select-title{ font-size:20px; font-weight:800; margin:4px 0 16px; }
   .preset-card{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
@@ -319,7 +351,13 @@
 
   <div class="topbar" id="topbar" style="display:none;">
     <div class="dong"><span id="topbar-dong">현장</span><button class="btn-switch-site" id="btn-switch-site" type="button">현장 변경</button></div>
-    <div class="progress" id="progress">0 / 0</div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <button class="btn-switch-site" id="btn-open-records" type="button">기록</button>
+      <div class="progress" id="progress">0 / 0</div>
+    </div>
+  </div>
+  <div class="top-progress-bar" id="top-progress-bar" style="display:none;">
+    <div class="top-progress-fill" id="top-progress-fill"></div>
   </div>
 
   <!-- 현장(Preset) 선택 화면 -->
@@ -361,40 +399,53 @@
       <span class="ocr-match" id="ocr-match"></span>
     </div>
 
-    <div class="mic-row">
-      <div class="mic-dot" id="mic-dot"></div>
-      <div class="mic-text" id="mic-text">마이크 대기 중</div>
-    </div>
-    <div class="transcript" id="transcript">&nbsp;</div>
-
     <div class="actions">
       <button class="btn-redo" id="btn-clear">다시 말하기</button>
       <button class="btn-ok" id="btn-ok" disabled>저장하고 다음</button>
     </div>
-    <button class="btn-mic" id="btn-mic">🎤 음성 인식 시작</button>
-    <button class="btn-mic" id="btn-keypad-toggle">🔢 숫자로 입력 (음성 안 될 때)</button>
+
+    <div class="mic-status-line">
+      <div class="mic-dot" id="mic-dot"></div>
+      <div class="mic-text" id="mic-text">마이크 대기 중</div>
+      <div class="transcript" id="transcript">&nbsp;</div>
+    </div>
+
+    <div class="secondary-row">
+      <button class="btn-mic" id="btn-mic">🎤 음성 시작</button>
+      <button class="btn-mic" id="btn-keypad-toggle">🔢 숫자 입력</button>
+    </div>
+  </div>
+
+  <div id="done-screen" style="display:none" class="done-banner">
+    <div class="big" id="done-title">검침 완료</div>
+    <div id="done-sub">기록됨. 기록 패널에서 CSV/엑셀로 내려받으세요.</div>
+  </div>
+  </div>
+
+</div>
+
+<!-- 숫자 키패드 — 오버레이 모달. 화면 높이를 밀어내지 않는다 -->
+<div class="keypad-overlay" id="keypad-overlay">
+  <div class="keypad-sheet">
+    <div class="keypad-sheet-head">
+      <span>숫자로 입력</span>
+      <button class="keypad-close" id="btn-keypad-close">닫기</button>
+    </div>
     <div class="keypad" id="keypad">
       <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
       <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
       <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
       <button class="wide" data-k="clear">지우기</button><button data-k="0">0</button><button class="wide" data-k="back">⌫</button>
     </div>
-
-    <div class="minimap" id="minimap">
-      <div class="minimap-title">현재 위치</div>
-      <div class="minimap-track" id="minimap-track"></div>
-      <div class="minimap-labels">
-        <span id="minimap-label-start">-</span>
-        <span id="minimap-label-end">-</span>
-      </div>
-    </div>
   </div>
+</div>
 
-  <div id="done-screen" style="display:none" class="done-banner">
-    <div class="big" id="done-title">검침 완료</div>
-    <div id="done-sub">기록됨. 아래에서 CSV로 내려받으세요.</div>
+<!-- 기록 패널 — 평소엔 숨겨져 있고, 상단 "기록" 버튼으로만 연다 -->
+<div id="records-panel">
+  <div class="records-head">
+    <h1>기록</h1>
+    <button class="btn-close-records" id="btn-close-records">닫기</button>
   </div>
-
   <div class="log-section">
     <div class="log-header">
       <h2>기록 (<span id="log-count">0</span>)</h2>
@@ -405,13 +456,10 @@
       <div class="log-empty">아직 기록이 없습니다</div>
     </div>
   </div>
-
   <div class="hint">
     계량기를 보고 숫자를 말하세요 · "저장하고 다음"으로 확정 · "다시 말하기"로 재입력<br>
     새로고침해도 기록은 기기에 남아있습니다
   </div>
-  </div>
-
 </div>
 
 <script>
@@ -675,9 +723,8 @@ const camOverlayText = document.getElementById('cam-overlay-text');
 const ocrRow = document.getElementById('ocr-row');
 const ocrValueEl = document.getElementById('ocr-value');
 const ocrMatchEl = document.getElementById('ocr-match');
-const minimapTrack = document.getElementById('minimap-track');
-const minimapLabelStart = document.getElementById('minimap-label-start');
-const minimapLabelEnd = document.getElementById('minimap-label-end');
+const topProgressBar = document.getElementById('top-progress-bar');
+const topProgressFill = document.getElementById('top-progress-fill');
 const topbarDong = document.getElementById('topbar-dong');
 const doneTitle = document.getElementById('done-title');
 const doneSub = document.getElementById('done-sub');
@@ -705,13 +752,14 @@ function renderCurrent(){
   ocrStaged = null;
   if(idx >= SEQUENCE.length){
     activeScreen.style.display = 'none';
-    doneScreen.style.display = 'block';
+    doneScreen.style.display = 'flex';
     progressEl.textContent = SEQUENCE.length + ' / ' + SEQUENCE.length;
     doneTitle.textContent = (currentPreset ? currentPreset.name : '') + ' 검침 완료';
-    doneSub.textContent = '총 ' + SEQUENCE.length + '건 기록됨. 아래에서 CSV/엑셀로 내려받으세요.';
+    doneSub.textContent = '총 ' + SEQUENCE.length + '건 기록됨. 기록 패널에서 CSV/엑셀로 내려받으세요.';
+    renderTopProgressBar();
     return;
   }
-  activeScreen.style.display = '';
+  activeScreen.style.display = 'flex';
   doneScreen.style.display = 'none';
   const cur = SEQUENCE[idx];
   hoLabel.textContent = cur.ho + '호';
@@ -719,40 +767,15 @@ function renderCurrent(){
   typeLabel.className = 'type ' + meterTypeClass(cur.type);
   progressEl.textContent = (idx+1) + ' / ' + SEQUENCE.length;
   renderStaged();
-  renderMinimap();
+  renderTopProgressBar();
 }
 
-// 진행 미니맵 — 건물 도면이 아니라 "전체 검침 중 어디쯤인가"만 보여준다.
-// Preset의 실제 units 순서를 기반으로, 세대 단위(냉수+온수 등 항목 전부 완료 여부)로 완료 표시한다.
-// 세대 수가 많으면 화면 폭에 맞춰 구간으로 묶어서 보여준다 (세대 하나하나 텍스트는 표시하지 않음).
-function renderMinimap(){
-  if(!currentPreset || !currentPreset.units || currentPreset.units.length === 0){
-    minimapTrack.innerHTML = '';
-    return;
-  }
-  const units = currentPreset.units;
-  const totalPerUnit = currentPreset.meterTypes.length;
-  const doneCountByHo = {};
-  log.forEach(e => { doneCountByHo[e.ho] = (doneCountByHo[e.ho] || 0) + 1; });
-
-  const currentHo = (idx < SEQUENCE.length) ? SEQUENCE[idx].ho : null;
-  const currentUnitIndex = units.findIndex(u => u.ho === currentHo);
-
-  const MAX_SEGMENTS = 40;
-  const segCount = Math.min(units.length, MAX_SEGMENTS);
-  const bucketSize = Math.ceil(units.length / segCount);
-
-  minimapTrack.innerHTML = '';
-  for(let i = 0; i < units.length; i += bucketSize){
-    const bucketUnits = units.slice(i, i + bucketSize);
-    const bucketDone = bucketUnits.every(u => (doneCountByHo[u.ho] || 0) >= totalPerUnit);
-    const bucketHasCurrent = currentUnitIndex >= i && currentUnitIndex < i + bucketSize;
-    const seg = document.createElement('div');
-    seg.className = 'mm-seg' + (bucketHasCurrent ? ' current' : (bucketDone ? ' done' : ''));
-    minimapTrack.appendChild(seg);
-  }
-  minimapLabelStart.textContent = units[0].ho + '호';
-  minimapLabelEnd.textContent = units[units.length - 1].ho + '호';
+// 상단의 얇은 진행바 — "전체 중 어디쯤인가"를 가장 단순한 형태로만 보여준다.
+// 건물 도면이나 세대별 상세 표시는 하지 않는다.
+function renderTopProgressBar(){
+  if(SEQUENCE.length === 0){ topProgressFill.style.width = '0%'; return; }
+  const pct = Math.min(100, Math.round((idx / SEQUENCE.length) * 100));
+  topProgressFill.style.width = pct + '%';
 }
 
 function renderStaged(){
@@ -1045,9 +1068,9 @@ let listening = false;
 function setupRecognition(){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){
-    micText.textContent = '이 브라우저는 음성 인식을 지원하지 않습니다 (버튼으로 진행)';
+    micText.textContent = '음성 인식 미지원 (숫자 입력 사용)';
     btnMic.disabled = true;
-    btnMic.textContent = '음성 인식 미지원';
+    btnMic.textContent = '🎤 미지원';
     return;
   }
   recognition = new SR();
@@ -1076,10 +1099,10 @@ function setupRecognition(){
     if(e.error === 'network'){
       listening = false;
       micDot.classList.remove('live');
-      micText.textContent = '오프라인 — 숫자 키패드로 계속하세요';
-      btnMic.textContent = '🎤 음성 인식 시작';
+      micText.textContent = '오프라인 — 숫자 입력으로 계속하세요';
+      btnMic.textContent = '🎤 음성 시작';
       btnMic.classList.remove('on');
-      keypad.classList.add('show');
+      openKeypad();
     } else {
       micText.textContent = '인식 오류 (' + e.error + ') · 재시작 중';
     }
@@ -1101,11 +1124,19 @@ function handleUtterance(text){
   if(digits){ staged = digits; renderStaged(); }
 }
 
-// 숫자 키패드 — 음성 인식이 안 되거나(오프라인 등) 실패할 때의 확실한 백업 경로
+// 숫자 키패드 — 오버레이 모달로 열고 닫는다 (화면 높이에 영향 없음)
 const btnKeypadToggle = document.getElementById('btn-keypad-toggle');
 const keypad = document.getElementById('keypad');
-btnKeypadToggle.addEventListener('click', ()=>{
-  keypad.classList.toggle('show');
+const keypadOverlay = document.getElementById('keypad-overlay');
+const btnKeypadClose = document.getElementById('btn-keypad-close');
+
+function openKeypad(){ keypadOverlay.classList.add('show'); }
+function closeKeypad(){ keypadOverlay.classList.remove('show'); }
+
+btnKeypadToggle.addEventListener('click', openKeypad);
+btnKeypadClose.addEventListener('click', closeKeypad);
+keypadOverlay.addEventListener('click', (e)=>{
+  if(e.target === keypadOverlay) closeKeypad(); // 바깥 어두운 영역 탭하면 닫기
 });
 keypad.addEventListener('click', (e)=>{
   const k = e.target.getAttribute('data-k');
@@ -1124,13 +1155,18 @@ btnMic.addEventListener('click', ()=>{
       listening = true;
       micDot.classList.add('live');
       micText.textContent = '듣는 중...';
-      btnMic.textContent = '🎤 음성 인식 중지';
+      btnMic.textContent = '🎤 음성 중지';
       btnMic.classList.add('on');
-    }catch(err){ console.error(err); }
+    }catch(err){
+      // 예전엔 여기서 콘솔에만 찍고 화면은 그대로였음 — 그래서 사용자 눈에는
+      // "버튼을 눌러도 아무 반응이 없다"로 보였다. 이제 실패 이유를 화면에 바로 보여준다.
+      console.error(err);
+      micText.textContent = '음성 인식을 시작하지 못했습니다 (' + (err && err.message ? err.message : err) + ')';
+    }
   } else {
     listening = false;
     recognition.stop();
-    btnMic.textContent = '🎤 음성 인식 시작';
+    btnMic.textContent = '🎤 음성 시작';
     btnMic.classList.remove('on');
   }
 });
@@ -1292,6 +1328,7 @@ async function selectPreset(preset){
   siteSelectScreen.classList.add('hidden');
   siteContent.classList.add('show');
   topbarEl.style.display = 'flex';
+  topProgressBar.style.display = 'block';
 
   renderLog();
   renderCurrent();
@@ -1308,9 +1345,17 @@ btnSwitchSite.addEventListener('click', async () => {
   // 여기서는 화면만 목록으로 되돌리면 된다 — 진행 기록은 그대로 남아있다.
   siteContent.classList.remove('show');
   topbarEl.style.display = 'none';
+  topProgressBar.style.display = 'none';
   siteSelectScreen.classList.remove('hidden');
   await renderPresetList();
 });
+
+// 기록 패널 — 평소엔 숨겨진 별도 화면. 검침 루프 자체에는 영향을 주지 않는다.
+const recordsPanel = document.getElementById('records-panel');
+const btnOpenRecords = document.getElementById('btn-open-records');
+const btnCloseRecords = document.getElementById('btn-close-records');
+btnOpenRecords.addEventListener('click', () => { recordsPanel.classList.add('show'); });
+btnCloseRecords.addEventListener('click', () => { recordsPanel.classList.remove('show'); });
 
 presetImportInput.addEventListener('change', async (e) => {
   const file = e.target.files[0];
