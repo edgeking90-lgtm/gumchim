@@ -1289,6 +1289,14 @@ async function startAndroidListening(){
 async function runAndroidListenLoop(){
   const plugin = window.Capacitor.Plugins.SpeechRecognition;
   let permissionRequestTried = false;
+  // 진짜 문제(오디오/클라이언트/서버 오류 등)가 연속으로 이만큼 나면 무한정 헤매지 않고
+  // 자동으로 키패드로 넘긴다 (오프라인일 때 키패드로 넘기는 것과 같은 원칙).
+  let consecutiveRealErrors = 0;
+  const REAL_ERROR_FALLBACK_THRESHOLD = 4;
+  // "No match"/"No speech input"은 연속 듣기 중 사람이 아직 말을 안 했거나 잠깐 멈춘
+  // 지극히 정상적인 상황이라, 화면에 표시하지 않고 조용히 다시 듣는다.
+  const SILENT_NORMAL = ['No match', 'No speech input'];
+
   while(listening){
     try{
       const result = await plugin.start({
@@ -1301,6 +1309,7 @@ async function runAndroidListenLoop(){
       if(text){
         transcriptEl.textContent = text;
         handleUtterance(text.trim());
+        consecutiveRealErrors = 0;
       }
     }catch(err){
       const msg = (err && err.message) || String(err);
@@ -1321,10 +1330,18 @@ async function runAndroidListenLoop(){
         break;
       }
       console.warn('안드로이드 음성 인식 세션 오류', err);
-      if(listening){
-        setMicUiListening(true, '재시도 중: ' + msg);
-        await new Promise(r => setTimeout(r, 500));
+      if(SILENT_NORMAL.some(s => msg.indexOf(s) !== -1)){
+        consecutiveRealErrors = 0;
+      } else {
+        consecutiveRealErrors++;
+        if(consecutiveRealErrors >= REAL_ERROR_FALLBACK_THRESHOLD){
+          listening = false;
+          setMicUiListening(false, '음성 인식에 문제가 있습니다 (숫자 입력 사용)');
+          openKeypad();
+          break;
+        }
       }
+      if(listening) await new Promise(r => setTimeout(r, 500));
     }
   }
 }
