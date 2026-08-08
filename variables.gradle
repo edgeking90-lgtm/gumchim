@@ -1,0 +1,63 @@
+name: Android Debug APK Build
+
+# 이 워크플로는 오직 APK 빌드만 담당하는 얇은 CI입니다.
+# 새 프레임워크/백엔드를 도입하지 않습니다 — Capacitor로 기존 gumchim-app/(index.html 등)을
+# 그대로 패키징해서 android/app/build/outputs/apk/debug/app-debug.apk를 만드는 것이 전부입니다.
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: JDK 21 설치
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Node.js 설치
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: npm 의존성 설치 (Capacitor CLI/코어/플러그인)
+        run: npm ci
+
+      - name: 웹 자산을 www/ 스테이징 폴더로 준비
+        # 레포 루트는 GitHub Pages가 그대로 서빙 중이므로 건드리지 않는다.
+        # Capacitor의 webDir(www)만 여기서 임시로 만든다 — 커밋되지 않는 빌드 산출물이다.
+        run: |
+          mkdir -p www
+          cp index.html manifest.json sw.js icon-192.png icon-512.png www/
+
+      - name: Capacitor sync (웹 자산 + 네이티브 플러그인 반영)
+        run: npx cap sync android
+
+      - name: Android SDK 설치
+        uses: android-actions/setup-android@v3
+
+      - name: 필요한 SDK 컴포넌트 설치
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
+      - name: gradlew 실행 권한 부여
+        run: chmod +x android/gradlew
+
+      - name: Debug APK 빌드
+        working-directory: android
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: APK를 Artifact로 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
