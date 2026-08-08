@@ -1294,7 +1294,7 @@ async function runAndroidListenLoop(){
       const result = await plugin.start({
         language: 'ko-KR',
         partialResults: true,
-        popup: false,
+        popup: true,
         maxResults: 1
       });
       const text = (result && result.matches && result.matches[0]) || '';
