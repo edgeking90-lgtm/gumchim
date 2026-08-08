@@ -1448,21 +1448,56 @@ const camPermStatus = document.getElementById('cam-perm-status');
 const btnGrant = document.getElementById('btn-grant');
 const btnSkip = document.getElementById('btn-skip');
 
+// 마이크 권한의 "진실"은 플랫폼마다 다른 곳에 있다.
+// - 안드로이드 네이티브: 실제 음성인식이 쓰는 @capacitor-community/speech-recognition
+//   플러그인의 checkPermissions()/requestPermissions() 결과 (RECORD_AUDIO 권한을 직접 봄)
+// - 웹/PWA: 브라우저의 getUserMedia 기반 마이크 권한
+// 웹 전용 판정(getUserMedia)을 안드로이드에도 그대로 쓰면, 실제 시스템 권한과 무관하게
+// 이 WebView 안에서 getUserMedia 자체가 실패해 항상 "거부됨"으로 잘못 표시되는 문제가 있었다.
+// 아래 두 함수는 캐시된 값을 쓰지 않고, 호출 시점마다 실제 OS 권한을 새로 조회한다.
+async function checkAndroidMicPermission(){
+  const plugin = window.Capacitor.Plugins.SpeechRecognition;
+  if(!plugin) return false;
+  try{
+    const status = await plugin.checkPermissions();
+    return status.speechRecognition === 'granted';
+  }catch(err){
+    return false;
+  }
+}
+
+async function requestAndroidMicPermission(){
+  const plugin = window.Capacitor.Plugins.SpeechRecognition;
+  if(!plugin) return false;
+  try{
+    const status = await plugin.requestPermissions();
+    return status.speechRecognition === 'granted';
+  }catch(err){
+    return false;
+  }
+}
+
 async function requestAllPermissions(){
   btnGrant.disabled = true;
   btnGrant.textContent = '확인 중...';
 
-  // 마이크: getUserMedia로 실제 권한을 확정시킨 뒤 트랙은 바로 정지
-  // (실제 인식은 SpeechRecognition이 별도로 시작하지만, 최초 권한 프롬프트를
-  //  이 시점에 한 번에 받아서 이후 흐름을 끊지 않기 위함)
-  try{
-    const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    micStream.getTracks().forEach(t => t.stop());
-    micPermStatus.textContent = '허용됨';
-    micPermStatus.className = 'status ok';
-  }catch(err){
-    micPermStatus.textContent = '거부됨';
-    micPermStatus.className = 'status fail';
+  if(isAndroidNative()){
+    // 이미 허용돼 있으면 requestPermissions()로 다시 물어볼 필요 없이 바로 확인만 한다.
+    const alreadyGranted = await checkAndroidMicPermission();
+    const granted = alreadyGranted || await requestAndroidMicPermission();
+    micPermStatus.textContent = granted ? '허용됨' : '거부됨';
+    micPermStatus.className = 'status ' + (granted ? 'ok' : 'fail');
+  } else {
+    // 마이크: getUserMedia로 실제 권한을 확정시킨 뒤 트랙은 바로 정지
+    try{
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStream.getTracks().forEach(t => t.stop());
+      micPermStatus.textContent = '허용됨';
+      micPermStatus.className = 'status ok';
+    }catch(err){
+      micPermStatus.textContent = '거부됨';
+      micPermStatus.className = 'status fail';
+    }
   }
 
   const camOk = await startCamera();
@@ -1477,9 +1512,17 @@ async function requestAllPermissions(){
 btnGrant.addEventListener('click', requestAllPermissions, { once: true });
 btnSkip.addEventListener('click', () => { gate.classList.add('hidden'); });
 
-// 브라우저가 이미 마이크/카메라를 둘 다 허용한 상태라면 게이트를 건너뛴다.
-// (Permissions API 미지원 브라우저에서는 그냥 매번 게이트를 보여준다 — 안전한 기본값)
+// 이미 권한이 허용된 상태라면 게이트를 건너뛴다.
+// 플랫폼별로 "진짜 권한이 어디 있는지"가 다르므로 여기서도 반드시 분리한다.
 async function skipGateIfAlreadyGranted(){
+  if(isAndroidNative()){
+    const micGranted = await checkAndroidMicPermission();
+    if(!micGranted) return; // 실제로 권한이 없으면 게이트를 그대로 보여준다 (캐시 없음, 매번 재조회)
+    const camOk = await startCamera();
+    if(camOk) gate.classList.add('hidden');
+    return;
+  }
+  // 웹/PWA — 기존 Permissions API 기반 판정 그대로 유지
   if(!navigator.permissions || !navigator.permissions.query) return;
   try{
     const [mic, cam] = await Promise.all([
