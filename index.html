@@ -91,52 +91,51 @@
   }
   .top-progress-fill{ height:100%; background:var(--amber); width:0%; transition:width .2s ease; }
 
-  .location{ text-align:center; flex:0 0 auto; margin-bottom:4px; }
+  .location{ text-align:center; flex:0 0 auto; margin-bottom:2px; }
   .loc-badge{
-    display:inline-block; font-size:10px; font-weight:700; letter-spacing:0.06em;
-    color:var(--ink); background:var(--teal); padding:2px 9px; border-radius:999px; margin-bottom:3px;
+    display:inline-block; font-size:10px; font-weight:700; letter-spacing:0.1em;
+    color:var(--teal); text-transform:uppercase;
   }
-  .location .ho{ font-size:30px; font-weight:700; letter-spacing:0.01em; color:var(--paper); line-height:1.15; }
+  .location .ho{ font-size:40px; font-weight:700; letter-spacing:0.01em; color:var(--paper); line-height:1.1; margin-top:1px; }
   .location .type{
-    display:inline-block; margin-top:2px; padding:2px 12px; border-radius:999px;
-    font-size:12px; font-weight:600; letter-spacing:0.08em;
+    display:inline-block; margin-top:1px; padding:2px 12px; border-radius:5px;
+    font-size:12px; font-weight:600; letter-spacing:0.06em;
   }
   .type.cold{ background:rgba(79,209,197,0.14); color:var(--teal); border:1px solid rgba(79,209,197,0.35);}
   .type.hot{ background:rgba(255,122,86,0.14); color:var(--warm); border:1px solid rgba(255,122,86,0.35);}
   .type.neutral{ background:rgba(139,132,120,0.16); color:var(--paper); border:1px solid var(--line);}
 
   .meter-shell{
-    background:linear-gradient(180deg,var(--panel-2),var(--panel));
+    background:var(--panel);
     border:1px solid var(--line);
-    border-radius:12px;
-    padding:8px 14px;
-    margin:6px 0;
-    box-shadow:inset 0 2px 10px rgba(0,0,0,0.5), 0 1px 0 rgba(255,255,255,0.02);
+    border-radius:8px;
+    padding:5px 14px;
+    margin:5px 0;
     position:relative;
     flex:0 0 auto;
   }
   .meter-shell::before{
-    content:"㎥"; position:absolute; top:6px; right:12px;
+    content:"㎥"; position:absolute; top:5px; right:12px;
     font-size:10px; color:var(--muted); letter-spacing:0.1em;
   }
   .digits{
     font-family:"SF Mono","JetBrains Mono","Consolas",monospace;
-    font-size:40px; font-weight:700; text-align:center; letter-spacing:0.05em;
-    color:var(--amber); text-shadow:0 0 14px rgba(255,179,0,0.3);
-    min-height:46px; line-height:46px; word-break:break-all;
+    font-size:50px; font-weight:700; text-align:center; letter-spacing:0.04em;
+    color:var(--amber);
+    min-height:56px; line-height:56px; word-break:break-all;
   }
-  .digits.empty{ color:var(--amber-dim); font-size:16px; }
+  .digits.empty{ color:var(--amber-dim); font-size:15px; }
   .digits .cursor{
-    display:inline-block; width:2px; height:28px; background:var(--amber);
+    display:inline-block; width:2px; height:32px; background:var(--amber);
     margin-left:4px; vertical-align:middle; animation:blink 1s step-start infinite;
   }
   @keyframes blink{ 50%{opacity:0;} }
 
   .mic-status-line{
     display:flex; align-items:center; gap:6px; flex:0 0 auto;
-    padding:2px 4px; min-height:16px;
+    padding:0 4px; min-height:14px;
   }
-  .mic-dot{ width:7px; height:7px; border-radius:50%; background:var(--muted); flex-shrink:0; }
+  .mic-dot{ width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
   .mic-dot.live{
     background:var(--danger); box-shadow:0 0 0 0 rgba(255,82,82,0.6); animation:pulse 1.4s infinite;
   }
@@ -145,9 +144,9 @@
     70%{box-shadow:0 0 0 10px rgba(255,82,82,0);}
     100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}
   }
-  .mic-text{ font-size:11px; color:var(--muted); flex-shrink:0; }
+  .mic-text{ font-size:10px; color:var(--muted); flex-shrink:0; }
   .transcript{
-    font-size:11px; color:var(--muted); overflow:hidden; text-overflow:ellipsis;
+    font-size:10px; color:var(--muted); overflow:hidden; text-overflow:ellipsis;
     white-space:nowrap; flex:1; min-width:0;
   }
 
@@ -155,7 +154,7 @@
   .camera-stage{
     position:relative; width:100%;
     flex:1 1 auto; min-height:80px;
-    background:#000; border-radius:14px; overflow:hidden;
+    background:#000; border-radius:8px; overflow:hidden;
     border:1px solid var(--line);
   }
   .camera-stage video{
@@ -163,7 +162,7 @@
   }
   .cam-badge{
     position:absolute; top:8px; left:8px; font-size:10px; font-weight:800;
-    padding:3px 8px; border-radius:6px; letter-spacing:0.04em;
+    padding:3px 8px; border-radius:4px; letter-spacing:0.04em;
   }
   .cam-badge.live{ background:rgba(255,82,82,0.9); color:#fff; }
   .cam-overlay{
@@ -178,7 +177,7 @@
   /* 음성값 ↔ 카메라 인식값 비교 */
   .ocr-row{
     display:flex; align-items:center; justify-content:space-between;
-    padding:4px 4px; font-size:12px; flex:0 0 auto; min-height:0;
+    padding:3px 4px; font-size:12px; flex:0 0 auto; min-height:0;
   }
   .ocr-left{ display:flex; align-items:center; gap:6px; }
   .ocr-label{ color:var(--muted); }
@@ -187,23 +186,23 @@
   .ocr-match.ok{ color:var(--good); }
   .ocr-match.warn{ color:var(--warm); }
 
-  .actions{ display:flex; gap:8px; flex:0 0 auto; margin:6px 0; }
+  .actions{ display:flex; gap:8px; flex:0 0 auto; margin:5px 0; }
   button{ font-family:inherit; border:none; cursor:pointer; }
   .btn-ok{
     flex:1; background:var(--amber); color:#1a1400; font-size:17px; font-weight:800;
-    padding:13px 0; border-radius:12px; letter-spacing:0.02em;
+    padding:13px 0; border-radius:8px; letter-spacing:0.02em;
     transition:transform .08s ease, opacity .15s ease;
   }
   .btn-ok:active{ transform:scale(0.97); }
   .btn-ok:disabled{ opacity:0.35; }
   .btn-redo{
     width:70px; background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
-    border-radius:12px; font-size:12px;
+    border-radius:8px; font-size:12px;
   }
   .secondary-row{ display:flex; gap:8px; flex:0 0 auto; }
   .btn-mic{
     flex:1; background:transparent; border:1px solid var(--line);
-    color:var(--muted); padding:9px 0; border-radius:10px; font-size:12px;
+    color:var(--muted); padding:8px 0; border-radius:6px; font-size:12px;
   }
   .btn-mic.on{ color:var(--teal); border-color:rgba(79,209,197,0.4); }
 
@@ -251,6 +250,30 @@
     background:transparent; border:1px solid var(--line); color:var(--paper);
     padding:6px 14px; border-radius:8px; font-size:13px;
   }
+
+  /* 사무실 붙여넣기 — Field Order(검침 순서)와 완전히 무관한 별도 섹션 */
+  .office-section{
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+    padding:14px 16px; margin-bottom:18px;
+  }
+  .office-section-title{ font-size:13px; font-weight:700; color:var(--paper); margin-bottom:6px; }
+  .office-mapping-status{ font-size:12px; color:var(--muted); margin-bottom:10px; }
+  .btn-row-office{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn-row-office .import-label{
+    background:transparent; border:1px solid var(--teal); color:var(--teal);
+    padding:8px 14px; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer;
+  }
+  .btn-row-office input[type=file]{ display:none; }
+  .btn-copy-office{
+    background:var(--amber); color:#1a1400; font-weight:800; font-size:12px;
+    padding:8px 16px; border-radius:6px;
+  }
+
+  .copy-summary-body{ font-size:13px; line-height:1.9; color:var(--paper); }
+  .copy-summary-body .cs-row{ display:flex; justify-content:space-between; }
+  .copy-summary-body .cs-warn{ color:var(--warm); font-weight:700; }
+  .copy-summary-body .cs-ok{ color:var(--good); }
+
   .log-section{}
   .log-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
   .log-header h2{
@@ -333,11 +356,11 @@
   <p>계량기를 보고(카메라) 숫자를 말하면(마이크) 자동으로 기록됩니다.<br>앱을 홈 화면에 추가해두면 다음부터 바로 열려요.</p>
   <div class="perm-rows">
     <div class="perm-row">
-      <div class="label">🎤 마이크 (숫자 음성 인식)</div>
+      <div class="label">마이크 — 숫자 음성 인식</div>
       <div class="status pending" id="mic-perm-status">대기</div>
     </div>
     <div class="perm-row">
-      <div class="label">📷 카메라 (검침 증빙 사진)</div>
+      <div class="label">카메라 — 검침 증빙 사진</div>
       <div class="status pending" id="cam-perm-status">대기</div>
     </div>
   </div>
@@ -347,7 +370,7 @@
 
 <div class="app">
 
-  <div class="offline-badge" id="offline-badge">📴 오프라인 · 기기에 저장 중</div>
+  <div class="offline-badge" id="offline-badge">오프라인 · 기기에 저장 중</div>
 
   <div class="topbar" id="topbar" style="display:none;">
     <div class="dong"><span id="topbar-dong">현장</span><button class="btn-switch-site" id="btn-switch-site" type="button">현장 변경</button></div>
@@ -411,8 +434,8 @@
     </div>
 
     <div class="secondary-row">
-      <button class="btn-mic" id="btn-mic">🎤 음성 시작</button>
-      <button class="btn-mic" id="btn-keypad-toggle">🔢 숫자 입력</button>
+      <button class="btn-mic" id="btn-mic">음성 시작</button>
+      <button class="btn-mic" id="btn-keypad-toggle">숫자 입력</button>
     </div>
   </div>
 
@@ -446,6 +469,17 @@
     <h1>기록</h1>
     <button class="btn-close-records" id="btn-close-records">닫기</button>
   </div>
+
+  <div class="office-section">
+    <div class="office-section-title">사무실 붙여넣기</div>
+    <div class="office-mapping-status" id="office-mapping-status">불러온 출력 양식 없음</div>
+    <div class="btn-row-office">
+      <label class="import-label" for="output-mapping-input">출력 양식 불러오기</label>
+      <input type="file" id="output-mapping-input" accept=".json">
+      <button class="btn-copy-office" id="btn-copy-office">전체 복사</button>
+    </div>
+  </div>
+
   <div class="log-section">
     <div class="log-header">
       <h2>기록 (<span id="log-count">0</span>)</h2>
@@ -459,6 +493,18 @@
   <div class="hint">
     계량기를 보고 숫자를 말하세요 · "저장하고 다음"으로 확정 · "다시 말하기"로 재입력<br>
     새로고침해도 기록은 기기에 남아있습니다
+  </div>
+</div>
+
+<!-- 복사 전 확인 오버레이 — 누락/확인필요가 있어도 조용히 복사되지 않는다 -->
+<div class="keypad-overlay" id="copy-summary-overlay">
+  <div class="keypad-sheet">
+    <div class="keypad-sheet-head">
+      <span>사무실 붙여넣기 확인</span>
+      <button class="keypad-close" id="btn-copy-summary-close">닫기</button>
+    </div>
+    <div class="copy-summary-body" id="copy-summary-body"></div>
+    <button class="btn-ok" id="btn-copy-confirm" style="width:100%; margin-top:14px;">전체 복사</button>
   </div>
 </div>
 
@@ -488,10 +534,11 @@ if (!navigator.onLine) document.getElementById('offline-badge').classList.add('s
 //    버리지 않고 "내장 202동 프리셋"에 자동으로 귀속시킨다.
 // =====================================================================
 const DB_NAME = 'gumchim-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE = 'entries';
 const PRESET_STORE = 'presets';
 const PHOTO_STORE = 'photos';
+const OUTPUT_MAPPING_STORE = 'outputMappings';
 const BUILTIN_202_PRESET_ID = 'builtin-202-water';
 let db = null;
 
@@ -590,6 +637,16 @@ function openDB(){
       if(!_db.objectStoreNames.contains(PHOTO_STORE)){
         _db.createObjectStore(PHOTO_STORE, { keyPath: 'key' });
       }
+
+      // outputMappings 스토어 — v5에서 신규 추가.
+      // Field Order(Preset/Sequence, 현장에서 일하기 편한 순서)와
+      // Output Order(사무실 붙여넣기 순서)는 절대 같은 데이터가 아니다.
+      // 그래서 presets/entries와 완전히 분리된 별도 스토어로 둔다.
+      // presetId당 1개로 제한하지 않는다 — 한 현장에 사무실 양식이 여러 개일 수 있다(부과용/검토용 등).
+      if(!_db.objectStoreNames.contains(OUTPUT_MAPPING_STORE)){
+        const omStore = _db.createObjectStore(OUTPUT_MAPPING_STORE, { keyPath: 'id' });
+        omStore.createIndex('by_preset_mapping', 'presetId');
+      }
     };
     req.onsuccess = (e) => resolve(e.target.result);
     req.onerror = (e) => reject(e.target.error);
@@ -669,6 +726,29 @@ function dbSavePhoto(key, presetId, dataUrl){
     const store = tx.objectStore(PHOTO_STORE);
     const req = store.put({ key, presetId, dataUrl, time: new Date().toISOString() });
     req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+// Output Mapping — "사무실에 어떤 순서/모양으로 붙여넣을지"만 담는다.
+// 절대 검침 순서(Sequence)로 쓰지 않는다. 한 현장(presetId)에 여러 개 있을 수 있다.
+function dbSaveOutputMapping(mapping){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OUTPUT_MAPPING_STORE, 'readwrite');
+    const store = tx.objectStore(OUTPUT_MAPPING_STORE);
+    const req = store.put(mapping); // put: 같은 id면 덮어씀 (재import 허용)
+    req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+function dbGetOutputMappingsForPreset(presetId){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OUTPUT_MAPPING_STORE, 'readonly');
+    const store = tx.objectStore(OUTPUT_MAPPING_STORE);
+    const idx = store.index('by_preset_mapping');
+    const req = idx.getAll(IDBKeyRange.only(presetId));
+    req.onsuccess = () => resolve(req.result);
     req.onerror = (e) => reject(e.target.error);
   });
 }
@@ -933,10 +1013,16 @@ async function confirmCurrent(){
   try{
     const cur = SEQUENCE[idx];
     const entryKeyStr = dbKeyFor(currentPreset.id, cur.ho, cur.type);
+    // 확정 당시의 검토 필요 상태를 메타데이터로 남긴다 — 저장되는 값(staged) 자체는 절대 안 바뀐다.
+    // 지금은 OCR 불일치 하나만 사유로 쓴다. 다른 사유(사진 없음/전월 대비 급변 등)는
+    // 나중에 reviewReason 값만 늘리면 되고, 지금 예외 시스템을 미리 만들지 않는다.
+    const reviewReason = (ocrStaged !== null && ocrStaged !== staged) ? 'ocr_mismatch' : null;
     const entry = {
       key: entryKeyStr,
       presetId: currentPreset.id,
-      ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString()
+      ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString(),
+      needsReview: reviewReason !== null,
+      reviewReason: reviewReason
     };
     try{
       await dbAdd(entry);
@@ -1070,7 +1156,7 @@ function setupRecognition(){
   if(!SR){
     micText.textContent = '음성 인식 미지원 (숫자 입력 사용)';
     btnMic.disabled = true;
-    btnMic.textContent = '🎤 미지원';
+    btnMic.textContent = '미지원';
     return;
   }
   recognition = new SR();
@@ -1100,7 +1186,7 @@ function setupRecognition(){
       listening = false;
       micDot.classList.remove('live');
       micText.textContent = '오프라인 — 숫자 입력으로 계속하세요';
-      btnMic.textContent = '🎤 음성 시작';
+      btnMic.textContent = '음성 시작';
       btnMic.classList.remove('on');
       openKeypad();
     } else {
@@ -1155,7 +1241,7 @@ btnMic.addEventListener('click', ()=>{
       listening = true;
       micDot.classList.add('live');
       micText.textContent = '듣는 중...';
-      btnMic.textContent = '🎤 음성 중지';
+      btnMic.textContent = '음성 중지';
       btnMic.classList.add('on');
     }catch(err){
       // 예전엔 여기서 콘솔에만 찍고 화면은 그대로였음 — 그래서 사용자 눈에는
@@ -1166,7 +1252,7 @@ btnMic.addEventListener('click', ()=>{
   } else {
     listening = false;
     recognition.stop();
-    btnMic.textContent = '🎤 음성 시작';
+    btnMic.textContent = '음성 시작';
     btnMic.classList.remove('on');
   }
 });
@@ -1354,7 +1440,10 @@ btnSwitchSite.addEventListener('click', async () => {
 const recordsPanel = document.getElementById('records-panel');
 const btnOpenRecords = document.getElementById('btn-open-records');
 const btnCloseRecords = document.getElementById('btn-close-records');
-btnOpenRecords.addEventListener('click', () => { recordsPanel.classList.add('show'); });
+btnOpenRecords.addEventListener('click', async () => {
+  recordsPanel.classList.add('show');
+  await refreshOutputMappingStatus();
+});
 btnCloseRecords.addEventListener('click', () => { recordsPanel.classList.remove('show'); });
 
 presetImportInput.addEventListener('change', async (e) => {
@@ -1393,8 +1482,128 @@ presetImportInput.addEventListener('change', async (e) => {
 });
 
 // =====================================================================
-// 9. 초기화
+// 10. 사무실 붙여넣기 — Output Mapping
+//     Field Order(검침 순서)와 절대 섞이지 않는다.
+//     이 기능은 오직: outputMapping.rowOrder를 따라 entries에서 값을 찾아
+//     TSV로 재배열해서 클립보드에 복사하는 것뿐이다.
 // =====================================================================
+let currentOutputMappings = [];
+const officeMappingStatus = document.getElementById('office-mapping-status');
+const outputMappingInput = document.getElementById('output-mapping-input');
+const btnCopyOffice = document.getElementById('btn-copy-office');
+const copySummaryOverlay = document.getElementById('copy-summary-overlay');
+const copySummaryBody = document.getElementById('copy-summary-body');
+const btnCopySummaryClose = document.getElementById('btn-copy-summary-close');
+const btnCopyConfirm = document.getElementById('btn-copy-confirm');
+
+async function refreshOutputMappingStatus(){
+  if(!currentPreset){ officeMappingStatus.textContent = '불러온 출력 양식 없음'; return; }
+  currentOutputMappings = await dbGetOutputMappingsForPreset(currentPreset.id);
+  if(currentOutputMappings.length === 0){
+    officeMappingStatus.textContent = '불러온 출력 양식 없음 — 먼저 "출력 양식 불러오기"를 눌러주세요';
+  } else {
+    // 지금은 여러 개 중 첫 번째만 쓴다(선택 UI는 다음 단계). 데이터 구조 자체는 여러 개를 이미 지원한다.
+    const m = currentOutputMappings[0];
+    officeMappingStatus.textContent = `출력 양식: ${m.name} (${m.rowOrder.length}행 × ${m.columns.length}열)`;
+  }
+}
+
+outputMappingInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file || !currentPreset) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!Array.isArray(data.rowOrder) || data.rowOrder.length === 0 || !Array.isArray(data.columns)){
+      alert('올바른 출력 양식 파일이 아닙니다. PC 도구의 "5. 사무실 출력 양식"에서 저장한 JSON인지 확인해주세요.');
+      e.target.value = '';
+      return;
+    }
+    const name = data.name || '기본 사무실 입력';
+    const mapping = {
+      id: currentPreset.id + '__office-' + name.replace(/[^a-zA-Z0-9가-힣]+/g, '-'),
+      presetId: currentPreset.id,
+      name: name,
+      columns: data.columns,
+      rowOrder: data.rowOrder,
+      layout: data.layout || 'wide',
+      createdAt: new Date().toISOString()
+    };
+    await dbSaveOutputMapping(mapping);
+    e.target.value = '';
+    await refreshOutputMappingStatus();
+  }catch(err){
+    console.error(err);
+    alert('파일을 읽지 못했습니다. JSON 형식인지 확인해주세요.');
+    e.target.value = '';
+  }
+});
+
+// 현재 preset의 entries를 ho+type으로 바로 찾을 수 있는 조회용 맵 (log는 이미 이 preset으로 필터링돼 있음)
+function buildEntryLookup(){
+  const map = {};
+  log.forEach(e => { map[e.ho + '_' + e.type] = e; });
+  return map;
+}
+
+let pendingCopyTsv = '';
+
+btnCopyOffice.addEventListener('click', () => {
+  if(currentOutputMappings.length === 0){
+    alert('먼저 "출력 양식 불러오기"로 사무실 양식을 불러와주세요.');
+    return;
+  }
+  const mapping = currentOutputMappings[0];
+  const lookup = buildEntryLookup();
+
+  let found = 0, missing = 0, needsReviewCount = 0;
+  const rows = mapping.rowOrder.map(ho => {
+    return mapping.columns.map(col => {
+      const e = lookup[ho + '_' + col];
+      if(e){
+        found++;
+        if(e.needsReview) needsReviewCount++;
+        return e.value;
+      } else {
+        missing++;
+        return '';
+      }
+    });
+  });
+  pendingCopyTsv = rows.map(r => r.join('\t')).join('\n');
+
+  const total = mapping.rowOrder.length * mapping.columns.length;
+  copySummaryBody.innerHTML = `
+    <div class="cs-row"><span>현장</span><b>${currentPreset.name}</b></div>
+    <div class="cs-row"><span>출력 양식</span><b>${mapping.name}</b></div>
+    <div class="cs-row"><span>출력 크기</span><b>${mapping.rowOrder.length}행 × ${mapping.columns.length}열</b></div>
+    <div class="cs-row"><span>채워진 값</span><b class="${found===total?'cs-ok':''}">${found} / ${total}</b></div>
+    <div class="cs-row"><span>누락</span><b class="${missing>0?'cs-warn':'cs-ok'}">${missing}건</b></div>
+    <div class="cs-row"><span>확인 필요</span><b class="${needsReviewCount>0?'cs-warn':'cs-ok'}">${needsReviewCount}건</b></div>
+  `;
+  copySummaryOverlay.classList.add('show');
+});
+
+btnCopySummaryClose.addEventListener('click', () => { copySummaryOverlay.classList.remove('show'); });
+copySummaryOverlay.addEventListener('click', (e) => {
+  if(e.target === copySummaryOverlay) copySummaryOverlay.classList.remove('show');
+});
+
+btnCopyConfirm.addEventListener('click', async () => {
+  try{
+    await navigator.clipboard.writeText(pendingCopyTsv);
+    btnCopyConfirm.textContent = '복사됨';
+    setTimeout(() => {
+      btnCopyConfirm.textContent = '전체 복사';
+      copySummaryOverlay.classList.remove('show');
+    }, 900);
+  }catch(err){
+    console.error(err);
+    alert('클립보드 복사에 실패했습니다. 브라우저 권한을 확인해주세요.');
+  }
+});
+
+
 (async function init(){
   db = await openDB();
   await renderPresetList();
