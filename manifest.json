@@ -1,5 +1,5 @@
 {
-  "name": "202동 검침 어시스턴트",
+  "name": "검침 어시스턴트",
   "short_name": "검침",
   "start_url": "./index.html",
   "scope": "./",
