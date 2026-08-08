@@ -25,7 +25,7 @@ jobs:
       - name: Node.js 설치
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: npm 의존성 설치 (Capacitor CLI/코어/플러그인)
         run: npm ci
