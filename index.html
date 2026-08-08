@@ -1325,11 +1325,13 @@ async function runAndroidListenLoop(){
       }
       // 권한 문제가 아닌 다른 세션 실패는, 전체 루프를 끊지 않게
       // 잠깐 쉬었다가 계속 재시도한다 (웹 경로의 onerror/onend 재시작과 같은 역할).
+      // 진단용: 지금까지는 콘솔에만 남아 사용자 눈에는 안 보였다 — 실제 원인을 보기 위해
+      // 화면에도 잠깐 표시한다 (원인 파악 후 제거할 임시 계측).
       console.warn('안드로이드 음성 인식 세션 오류', err);
-      if(listening) await new Promise(r => setTimeout(r, 500));
-    }
-  }
-}
+      if(listening){
+        setMicUiListening(true, '재시도 중: ' + msg);
+        await new Promise(r => setTimeout(r, 500));
+      }
 
 async function runAndroidListenLoop(){
   const plugin = window.Capacitor.Plugins.SpeechRecognition;
