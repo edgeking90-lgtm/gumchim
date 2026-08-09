@@ -527,6 +527,22 @@
 </head>
 <body>
 
+<!-- [DIAGNOSTIC BUILD] PC/USB 디버깅 없이 폰 화면만으로 로그를 볼 수 있게 하는 임시 패널.
+     원인 확정 후 이 블록과 diagLog()의 화면표시 부분은 전부 제거한다. -->
+<div id="diag-panel" style="
+  position:fixed; left:0; right:0; bottom:0; z-index:99999;
+  max-height:34vh; overflow-y:auto; background:rgba(0,0,0,0.92);
+  color:#7CFC00; font-family:monospace; font-size:10px; line-height:1.45;
+  padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);
+  white-space:pre-wrap; word-break:break-all; border-top:1px solid #333;
+"></div>
+<button id="diag-clear-btn" style="
+  position:fixed; right:6px; z-index:100000; bottom:calc(34vh + 6px);
+  background:#333; color:#fff; border:none; border-radius:6px;
+  font-size:10px; padding:4px 8px;
+" type="button">로그 지우기</button>
+
+
 <!-- 최초 진입 시 권한 요청 게이트 -->
 <div id="permission-gate">
   <h1>시작 전에 권한이 필요해요</h1>
@@ -785,9 +801,29 @@ const DIAG_SESSION_ID = Math.random().toString(16).slice(2, 7);
 const DIAG_T0 = performance.now();
 function diagLog(tag, msg){
   const rel = Math.round(performance.now() - DIAG_T0);
-  console.log('[' + tag + '] ' + msg + '  (perf=' + rel + 'ms, wall=' + new Date().toISOString() + ')');
+  const line = '[' + tag + '] ' + msg + '  (perf=' + rel + 'ms, wall=' + new Date().toISOString() + ')';
+  console.log(line);
+  // [DIAGNOSTIC BUILD] PC 연결 없이 폰 화면에서 바로 읽을 수 있도록 같은 내용을 패널에도 남긴다.
+  const panel = document.getElementById('diag-panel');
+  if(panel){
+    const row = document.createElement('div');
+    row.textContent = line;
+    if(tag === 'SESSION'){ row.style.color = '#ff5252'; row.style.fontWeight = 'bold'; }
+    panel.appendChild(row);
+    panel.scrollTop = panel.scrollHeight;
+  }
 }
 diagLog('SESSION', DIAG_SESSION_ID);
+
+// [DIAGNOSTIC BUILD] 화면 패널 지우기 버튼 — 반복 테스트 중 화면이 로그로 꽉 찼을 때
+// 스크롤 없이 처음부터 다시 보고 싶을 때만 쓰는 용도. 실제 로그 자체(콘솔)는 안 지워진다.
+const diagClearBtn = document.getElementById('diag-clear-btn');
+if(diagClearBtn){
+  diagClearBtn.addEventListener('click', () => {
+    const panel = document.getElementById('diag-panel');
+    if(panel) panel.innerHTML = '';
+  });
+}
 
 // 문서 레벨 lifecycle 신호 — 안드로이드 WebView가 실제로 이 이벤트들을
 // 보내는지 관찰하기 위한 것. 지금까지 이 앱은 이 이벤트들을 전혀 안 듣고 있었다.
