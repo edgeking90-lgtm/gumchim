@@ -190,6 +190,11 @@
     padding:3px 8px; border-radius:4px; letter-spacing:0.04em;
   }
   .cam-badge.live{ background:rgba(255,82,82,0.9); color:#fff; }
+  .btn-manual-capture{
+    position:absolute; top:8px; right:8px; z-index:5;
+    background:rgba(10,15,13,0.72); color:var(--paper); border:1px solid rgba(234,231,222,0.35);
+    font-size:11px; font-weight:700; padding:5px 10px; border-radius:6px;
+  }
   .cam-overlay{
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     background:rgba(10,15,13,0.55); pointer-events:none;
@@ -366,6 +371,18 @@
   .li-type.neutral{ background:rgba(139,132,120,0.16); color:var(--paper);}
   .log-item .li-val{ font-family:monospace; color:var(--amber); font-size:15px; }
   .log-item .li-del{ color:var(--danger); background:transparent; font-size:12px; padding:4px 8px;}
+  .log-item .li-photo{ color:var(--teal); background:transparent; font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:6px; }
+  #photo-view-overlay{
+    display:none; position:fixed; inset:0; z-index:40; background:rgba(0,0,0,0.92);
+    align-items:center; justify-content:center; flex-direction:column; gap:14px;
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 14px);
+  }
+  #photo-view-overlay.show{ display:flex; }
+  #photo-view-overlay img{ max-width:100%; max-height:78vh; border-radius:8px; border:1px solid var(--line); }
+  #photo-view-close{
+    background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
+    border-radius:8px; padding:10px 20px; font-size:14px; font-weight:700;
+  }
   .log-empty{ color:var(--muted); font-size:13px; text-align:center; padding:16px 0; }
 
   .done-banner{ text-align:center; padding:40px 10px; color:var(--teal); flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; }
@@ -642,6 +659,7 @@
     <div class="camera-stage" id="camera-stage">
       <video id="cam-preview" autoplay playsinline muted></video>
       <div class="cam-badge live" id="cam-live-badge" style="display:none;">● REC</div>
+      <button class="btn-manual-capture" id="btn-manual-capture" type="button">촬영</button>
       <div class="cam-overlay" id="cam-overlay">
         <div class="cam-overlay-text" id="cam-overlay-text">카메라 준비 중…</div>
       </div>
@@ -705,6 +723,11 @@
 </div>
 
 <!-- 숫자 키패드 — 오버레이 모달. 화면 높이를 밀어내지 않는다 -->
+<div id="photo-view-overlay">
+  <img id="photo-view-img" src="" alt="검침 사진">
+  <button id="photo-view-close" type="button">닫기</button>
+</div>
+
 <div class="keypad-overlay" id="keypad-overlay">
   <div class="keypad-sheet">
     <div class="keypad-sheet-head">
@@ -1093,6 +1116,16 @@ function dbSavePhoto(key, presetId, dataUrl){
   });
 }
 
+function dbGetPhoto(key){
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(PHOTO_STORE, 'readonly');
+    const store = tx.objectStore(PHOTO_STORE);
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
 // Output Mapping — "사무실에 어떤 순서/모양으로 붙여넣을지"만 담는다.
 // 절대 검침 순서(Sequence)로 쓰지 않는다. 한 현장(presetId)에 여러 개 있을 수 있다.
 function dbSaveOutputMapping(mapping){
@@ -1463,6 +1496,7 @@ function renderLog(){
       </div>
       <div class="li-left">
         <span class="li-val">${item.value}</span>
+        <button class="li-photo" data-key="${item.key}">사진</button>
         <button class="li-del" data-key="${item.key}">삭제</button>
       </div>
     `;
@@ -1475,6 +1509,18 @@ function renderLog(){
       log = log.filter(x => x.key !== key);
       renderLog();
       renderCurrent();
+    });
+  });
+  logList.querySelectorAll('.li-photo').forEach(b=>{
+    b.addEventListener('click', async (e)=>{
+      const key = e.target.getAttribute('data-key');
+      const record = await dbGetPhoto(key);
+      if(!record || !record.dataUrl){
+        alert('이 항목엔 저장된 사진이 없습니다.');
+        return;
+      }
+      document.getElementById('photo-view-img').src = record.dataUrl;
+      document.getElementById('photo-view-overlay').classList.add('show');
     });
   });
 }
@@ -1918,6 +1964,35 @@ function captureFrame(){
     return null;
   }
 }
+
+// 수동 촬영 — 검침값 확정(confirmCurrent)과 완전히 별개의 동작이다.
+// 같은 entry key(현재 호수+검침종류)로 저장하므로, 나중에 confirmCurrent()가
+// 자동으로 찍는 사진이 뒤따라오면 그게 최종 증빙으로 덮어써진다 — 기존
+// dbSavePhoto()가 이미 put(덮어쓰기) 방식이라 별도 처리가 필요 없다.
+const btnManualCapture = document.getElementById('btn-manual-capture');
+btnManualCapture.addEventListener('click', async () => {
+  if(!currentPreset || !currentItem){ return; }
+  const frame = captureFrame();
+  if(!frame){
+    const original = btnManualCapture.textContent;
+    btnManualCapture.textContent = '카메라 대기 중';
+    setTimeout(() => { btnManualCapture.textContent = original; }, 1200);
+    return;
+  }
+  const key = dbKeyFor(currentPreset.id, currentItem.ho, currentItem.type);
+  try{
+    await dbSavePhoto(key, currentPreset.id, frame);
+    const original = btnManualCapture.textContent;
+    btnManualCapture.textContent = '저장됨';
+    setTimeout(() => { btnManualCapture.textContent = original; }, 900);
+  }catch(err){
+    console.warn('수동 촬영 저장 실패', err);
+  }
+});
+
+document.getElementById('photo-view-close').addEventListener('click', () => {
+  document.getElementById('photo-view-overlay').classList.remove('show');
+});
 
 // =====================================================================
 // 7. 최초 진입 권한 게이트
