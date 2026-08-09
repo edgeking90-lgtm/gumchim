@@ -16,7 +16,10 @@
 
     const parser = new DOMParser();
     const workbookDoc = parser.parseFromString(workbookXml, 'text/xml');
-    const sheets = workbookDoc.getElementsByTagName('sheet');
+    // 태그 이름에 네임스페이스 접두사가 붙는 경우(예: <x:sheet .../>)가 실제로 있어서,
+    // 접두사 유무와 무관하게 로컬 이름만으로 찾는다 (getElementsByTagName은 접두사가
+    // 다르면 못 찾는다 — 실제 사무실 파일에서 이 문제를 겪어서 고침).
+    const sheets = workbookDoc.getElementsByTagNameNS('*', 'sheet');
     let rId = null;
     for(let i = 0; i < sheets.length; i++){
       if(sheets[i].getAttribute('name') === sheetName){
@@ -30,7 +33,7 @@
     }
 
     const relsDoc = parser.parseFromString(relsXml, 'text/xml');
-    const rels = relsDoc.getElementsByTagName('Relationship');
+    const rels = relsDoc.getElementsByTagNameNS('*', 'Relationship');
     let target = null;
     for(let i = 0; i < rels.length; i++){
       if(rels[i].getAttribute('Id') === rId){
