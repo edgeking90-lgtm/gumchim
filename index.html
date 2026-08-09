@@ -389,6 +389,114 @@
     display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;
   }
   .site-select-title{ font-size:20px; font-weight:800; margin:4px 0 16px; }
+
+  /* =====================================================================
+     홈 화면 전용 라이트 테마 — #home-screen 스코프 안에서만 적용된다.
+     전역 :root(다크, 검침화면용)는 절대 안 건드린다. 이 블록 밖으로는
+     이 변수들이 새어나가지 않는다(#home-screen 자식 요소들만 참조).
+     ===================================================================== */
+  #home-screen{
+    --hbg:#f5f7fa;
+    --hcard:#ffffff;
+    --hink:#0f1f3d;
+    --hblue:#2563eb;
+    --hblue-soft:#eaf1ff;
+    --hmuted:#6b7690;
+    --hline:#e6e9f0;
+    --hgood:#1f9d55;
+    --hgood-soft:#e7f7ed;
+    --hwarn-soft:#fff4e5;
+    background:var(--hbg);
+    color:var(--hink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    display:flex; flex-direction:column; gap:18px;
+    padding:2px 2px 8px;
+  }
+  .home-brand{ display:flex; align-items:center; justify-content:space-between; }
+  .home-brand-left{ display:flex; align-items:center; gap:10px; }
+  .home-brand-mark{
+    width:34px; height:34px; border-radius:9px; background:var(--hblue);
+    flex-shrink:0;
+  }
+  .home-brand-text .hb-title{ font-size:19px; font-weight:800; letter-spacing:0.02em; color:var(--hink); line-height:1.15; }
+  .home-brand-text .hb-sub{ font-size:12px; font-weight:600; color:var(--hblue); margin-top:1px; }
+
+  .home-clock{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--hmuted); font-weight:600; }
+  .home-headline{ font-size:23px; font-weight:800; color:var(--hink); line-height:1.3; margin-top:2px; }
+  .home-subtext{ font-size:13px; color:var(--hmuted); margin-top:2px; }
+
+  .home-section-title{ display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:800; color:var(--hink); }
+
+  .recent-card{
+    background:var(--hcard); border:1px solid var(--hline); border-radius:14px;
+    padding:16px; display:flex; flex-direction:column; gap:12px;
+  }
+  .recent-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .recent-badge-dot{ width:38px; height:38px; border-radius:10px; background:var(--hblue-soft); flex-shrink:0; }
+  .recent-info{ flex:1; min-width:0; }
+  .recent-name{ font-size:16px; font-weight:800; color:var(--hink); }
+  .recent-meta{ font-size:12px; color:var(--hmuted); margin-top:2px; }
+  .recent-time{ font-size:11px; color:var(--hmuted); margin-top:4px; }
+  .home-status-badge{
+    font-size:11px; font-weight:800; padding:4px 9px; border-radius:999px; white-space:nowrap;
+  }
+  .home-status-badge.pending{ background:#f1f2f6; color:var(--hmuted); }
+  .home-status-badge.progress{ background:var(--hblue-soft); color:var(--hblue); }
+  .home-status-badge.done{ background:var(--hgood-soft); color:var(--hgood); }
+
+  .recent-stats{
+    display:flex; align-items:center; gap:14px; border-top:1px solid var(--hline); padding-top:12px;
+  }
+  .recent-stat{ text-align:left; }
+  .recent-stat b{ font-size:19px; color:var(--hblue); font-variant-numeric:tabular-nums; }
+  .recent-stat.total b{ color:var(--hink); }
+  .recent-stat span{ display:block; font-size:11px; color:var(--hmuted); margin-top:1px; }
+  .recent-pct{ font-size:19px; font-weight:800; color:var(--hink); margin-left:auto; }
+  .home-progress-track{ height:6px; background:#eef0f5; border-radius:99px; overflow:hidden; }
+  .home-progress-fill{ height:100%; background:var(--hblue); border-radius:99px; }
+  .btn-continue{
+    background:var(--hblue); color:#fff; border:none; border-radius:11px;
+    font-size:14px; font-weight:800; padding:11px 14px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+
+  .home-list{ display:flex; flex-direction:column; border-radius:14px; overflow:hidden; border:1px solid var(--hline); background:var(--hcard); }
+  .home-list-item{
+    display:flex; align-items:center; gap:12px; padding:14px 14px;
+    border-bottom:1px solid var(--hline);
+  }
+  .home-list-item:last-child{ border-bottom:none; }
+  .hli-icon{ width:32px; height:32px; border-radius:8px; background:var(--hblue-soft); flex-shrink:0; }
+  .hli-main{ flex:1; min-width:0; }
+  .hli-name{ font-size:15px; font-weight:800; color:var(--hink); }
+  .hli-meta{ font-size:11px; color:var(--hmuted); margin-top:1px; }
+  .hli-right{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; min-width:96px; }
+  .hli-pct-row{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--hmuted); font-variant-numeric:tabular-nums; }
+  .hli-pct-row b{ color:var(--hink); font-size:13px; }
+  .hli-chev{ color:var(--hmuted); font-size:16px; margin-left:2px; }
+  .hli-progress-track{ width:96px; height:4px; background:#eef0f5; border-radius:99px; overflow:hidden; }
+  .hli-progress-fill{ height:100%; background:var(--hblue); border-radius:99px; }
+  .hli-progress-fill.done{ background:var(--hgood); }
+
+  .btn-new-site{
+    border:1.5px dashed var(--hblue); border-radius:12px; background:transparent;
+    color:var(--hblue); font-size:14px; font-weight:800; padding:14px;
+    display:flex; align-items:center; justify-content:center; gap:6px;
+  }
+  .home-empty-note{ font-size:12px; color:var(--hmuted); text-align:center; padding:18px 0; }
+
+  #bottom-nav{
+    display:none; flex:0 0 auto; background:var(--hcard, #fff); border-top:1px solid var(--hline, #e6e9f0);
+    margin:10px -14px calc(-1 * env(safe-area-inset-bottom) - 10px);
+    padding:8px 6px calc(env(safe-area-inset-bottom) + 8px);
+  }
+  #bottom-nav.show{ display:flex; }
+  .nav-tab{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+    background:none; border:none; color:#9aa3b8; font-size:11px; font-weight:700; padding:4px 0;
+  }
+  .nav-tab .nt-icon{ font-size:19px; line-height:1; }
+  .nav-tab.active{ color:#2563eb; }
   .preset-card{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
     padding:16px 18px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -453,15 +561,50 @@
     <div class="top-progress-fill" id="top-progress-fill"></div>
   </div>
 
-  <!-- 현장(Preset) 선택 화면 -->
+  <!-- 현장(Preset) 선택 화면 = 홈 화면 -->
   <div id="site-select-screen">
-    <div class="site-select-title">검침 현장</div>
-    <div id="preset-list"></div>
-    <div class="import-box">
-      <label class="import-label" for="preset-import-input">+ 현장 불러오기</label>
-      <input type="file" id="preset-import-input" accept=".json">
-      <div class="import-hint">PC에서 만든 현장 구조 파일(.json)을 넣으세요.</div>
+    <div id="home-screen">
+
+      <div class="home-brand">
+        <div class="home-brand-left">
+          <div class="home-brand-mark"></div>
+          <div class="home-brand-text">
+            <div class="hb-title">GUMCHIM</div>
+            <div class="hb-sub">현장 검침 관리</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="home-clock" id="home-clock"></div>
+        <div class="home-headline">오늘의 현장을 선택하세요</div>
+        <div class="home-subtext">검침을 시작할 현장을 선택하거나, 새로운 현장을 등록하세요.</div>
+      </div>
+
+      <div id="recent-work-section" style="display:none;">
+        <div class="home-section-title" style="margin-bottom:8px;">최근 작업</div>
+        <div class="recent-card" id="recent-card"></div>
+      </div>
+
+      <div>
+        <div class="home-section-title" style="margin-bottom:8px;">현장 목록</div>
+        <div class="home-list" id="preset-list"></div>
+      </div>
+
+      <div>
+        <label class="btn-new-site" for="preset-import-input">＋ 새 현장 등록</label>
+        <input type="file" id="preset-import-input" accept=".json" style="display:none;">
+        <div class="home-empty-note" style="padding-top:8px;">JSON 현장 구조 파일을 선택하세요</div>
+      </div>
+
     </div>
+  </div>
+
+  <div id="bottom-nav" class="show">
+    <button class="nav-tab active" id="nav-tab-home" type="button"><span class="nt-icon">⌂</span>홈</button>
+    <button class="nav-tab" id="nav-tab-active" type="button"><span class="nt-icon">▤</span>검침 입력</button>
+    <button class="nav-tab" id="nav-tab-status" type="button"><span class="nt-icon">◧</span>현황</button>
+    <button class="nav-tab" id="nav-tab-settings" type="button"><span class="nt-icon">⚙</span>설정</button>
   </div>
 
   <div id="site-content">
@@ -1823,26 +1966,113 @@ async function presetProgress(preset){
   return { done: entries.length, total };
 }
 
+// 한국어 날짜/시간 포맷 — 초 단위는 표시하지 않는다. 하드코딩 없이 매번 실제 Date에서 만든다.
+function formatHomeClockText(date){
+  const y = date.getFullYear(), m = date.getMonth()+1, d = date.getDate();
+  const h = date.getHours(), min = date.getMinutes();
+  const ampm = h < 12 ? '오전' : '오후';
+  let h12 = h % 12; if(h12 === 0) h12 = 12;
+  return `${y}년 ${m}월 ${d}일 ${ampm} ${h12}시 ${min}분입니다.`;
+}
+function formatShortDateTime(date){
+  const m = date.getMonth()+1, d = date.getDate();
+  const h = date.getHours(), min = date.getMinutes();
+  const ampm = h < 12 ? '오전' : '오후';
+  let h12 = h % 12; if(h12 === 0) h12 = 12;
+  const minStr = String(min).padStart(2, '0');
+  return `${m}월 ${d}일 ${ampm} ${h12}:${minStr}`;
+}
+function updateHomeClock(){
+  const el = document.getElementById('home-clock');
+  if(el) el.textContent = formatHomeClockText(new Date());
+}
+updateHomeClock();
+setInterval(updateHomeClock, 30000); // 분 단위 표시라 30초 간격이면 충분히 정확하다
+
+function homeStatusOf(done, total){
+  if(done === 0) return { key: 'pending', label: '미시작' };
+  if(done >= total) return { key: 'done', label: '완료' };
+  return { key: 'progress', label: '진행 중' };
+}
+
+function renderRecentWorkCard(mostRecent){
+  const section = document.getElementById('recent-work-section');
+  const card = document.getElementById('recent-card');
+  if(!mostRecent){
+    section.style.display = 'none';
+    card.innerHTML = '';
+    return;
+  }
+  section.style.display = 'block';
+  const { preset, done, total, lastTime } = mostRecent;
+  const status = homeStatusOf(done, total);
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  card.innerHTML = `
+    <div class="recent-top">
+      <div style="display:flex; gap:12px; align-items:flex-start; min-width:0;">
+        <div class="recent-badge-dot"></div>
+        <div class="recent-info">
+          <div class="recent-name">${preset.name}</div>
+          <div class="recent-meta">${preset.meterTypes.join(' · ')}</div>
+          <div class="recent-time">마지막 검침: ${formatShortDateTime(new Date(lastTime))}</div>
+        </div>
+      </div>
+      <span class="home-status-badge ${status.key}">${status.label}</span>
+    </div>
+    <div class="home-progress-track"><div class="home-progress-fill" style="width:${pct}%;"></div></div>
+    <div class="recent-stats">
+      <div class="recent-stat"><b>${done}</b><span>완료 세대</span></div>
+      <div class="recent-stat total"><b>${total}</b><span>전체 세대</span></div>
+      <div class="recent-pct">${pct}%</div>
+    </div>
+    <button class="btn-continue" id="btn-recent-continue" type="button">검침 계속하기 ›</button>
+  `;
+  document.getElementById('btn-recent-continue').addEventListener('click', () => selectPreset(preset));
+}
+
 async function renderPresetList(){
   const presets = await dbGetAllPresets();
   presetListEl.innerHTML = '';
+
+  // "최근 작업" — entries가 하나라도 있는 preset 중 가장 최근에 확정된 것.
+  // 전부 미시작이면(entries 없는 preset뿐이면) 후보가 없어 카드 자체를 숨긴다.
+  let mostRecent = null;
+
   for(const preset of presets){
-    const { done, total } = await presetProgress(preset);
-    const card = document.createElement('div');
-    card.className = 'preset-card';
-    const isDone = total > 0 && done >= total;
-    const btnLabel = done === 0 ? '시작' : (isDone ? '완료' : '이어하기');
-    card.innerHTML = `
-      <div class="pc-info">
-        <div class="pc-name">${preset.name}</div>
-        <div class="pc-meta">${preset.units.length}세대 · ${preset.meterTypes.join('/')}</div>
-        <div class="pc-progress">${done} / ${total}</div>
+    const { done, total } = await presetProgress(preset); // 기존 함수 그대로 재사용
+    const entries = await dbGetEntriesForPreset(preset.id);
+    if(entries.length > 0){
+      const lastTime = entries.reduce((m, e) => (e.time > m ? e.time : m), entries[0].time);
+      if(!mostRecent || lastTime > mostRecent.lastTime){
+        mostRecent = { preset, done, total, lastTime };
+      }
+    }
+
+    const status = homeStatusOf(done, total);
+    const pct = total > 0 ? Math.round(done / total * 100) : 0;
+
+    const item = document.createElement('div');
+    item.className = 'home-list-item';
+    item.innerHTML = `
+      <div class="hli-icon"></div>
+      <div class="hli-main">
+        <div class="hli-name">${preset.name}</div>
+        <div class="hli-meta">${preset.meterTypes.join(' · ')}</div>
       </div>
-      <button class="pc-btn ${isDone ? 'done' : ''}">${btnLabel}</button>
+      <div class="hli-right">
+        <div class="hli-pct-row">
+          <span class="home-status-badge ${status.key}">${status.label}</span>
+          <b>${pct}%</b><span>${done} / ${total}</span>
+          <span class="hli-chev">›</span>
+        </div>
+        <div class="hli-progress-track"><div class="hli-progress-fill ${status.key === 'done' ? 'done' : ''}" style="width:${pct}%;"></div></div>
+      </div>
     `;
-    card.addEventListener('click', () => selectPreset(preset));
-    presetListEl.appendChild(card);
+    item.addEventListener('click', () => selectPreset(preset));
+    presetListEl.appendChild(item);
   }
+
+  renderRecentWorkCard(mostRecent);
 }
 
 async function selectPreset(preset){
@@ -1856,6 +2086,7 @@ async function selectPreset(preset){
 
   siteSelectScreen.classList.add('hidden');
   siteContent.classList.add('show');
+  bottomNav.classList.remove('show'); // 이번 단계에서는 하단 네비게이션을 홈 화면에만 표시
   topbarEl.style.display = 'flex';
   topProgressBar.style.display = 'block';
 
@@ -1868,16 +2099,44 @@ async function selectPreset(preset){
   if(!camStream){ startCamera(); }
 }
 
-btnSwitchSite.addEventListener('click', async () => {
-  // Preset 전환은 다른 Preset의 entries를 절대 건드리지 않는다.
-  // 이미 confirmCurrent()에서 매 확정마다 즉시 DB에 저장하고 있으므로,
-  // 여기서는 화면만 목록으로 되돌리면 된다 — 진행 기록은 그대로 남아있다.
+// btnSwitchSite("현장 변경")와 홈 네비 탭이 공유하는 "홈으로 돌아가기" 로직.
+// Preset 전환은 다른 Preset의 entries를 절대 건드리지 않는다 — confirmCurrent()가
+// 매 확정마다 즉시 DB에 저장하므로, 여기서는 화면만 목록으로 되돌리면 된다.
+async function goHome(){
   siteContent.classList.remove('show');
   topbarEl.style.display = 'none';
   topProgressBar.style.display = 'none';
   siteSelectScreen.classList.remove('hidden');
+  bottomNav.classList.add('show');
   await renderPresetList();
+}
+
+btnSwitchSite.addEventListener('click', goHome);
+
+// =====================================================================
+// 하단 네비게이션 — 이번 단계에서는 홈 화면에만 표시된다.
+// =====================================================================
+const bottomNav = document.getElementById('bottom-nav');
+document.getElementById('nav-tab-home').addEventListener('click', goHome);
+document.getElementById('nav-tab-active').addEventListener('click', () => {
+  if(currentPreset){
+    selectPreset(currentPreset);
+  } else {
+    alert('먼저 현장을 선택해주세요.');
+  }
 });
+document.getElementById('nav-tab-status').addEventListener('click', () => {
+  if(!currentPreset){
+    alert('먼저 현장을 선택해주세요.');
+    return;
+  }
+  renderSiteStatusPanel();
+  document.getElementById('site-status-panel').classList.add('show');
+});
+document.getElementById('nav-tab-settings').addEventListener('click', () => {
+  alert('설정 화면은 아직 준비 중입니다.');
+});
+
 
 // 기록 패널 — 평소엔 숨겨진 별도 화면. 검침 루프 자체에는 영향을 주지 않는다.
 const recordsPanel = document.getElementById('records-panel');
