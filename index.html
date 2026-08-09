@@ -829,6 +829,7 @@ if(diagClearBtn){
 // 보내는지 관찰하기 위한 것. 지금까지 이 앱은 이 이벤트들을 전혀 안 듣고 있었다.
 document.addEventListener('visibilitychange', () => {
   diagLog('DOC', 'visibilitychange -> ' + document.visibilityState);
+  if(document.visibilityState === 'visible'){ resumeMediaOnForeground(); } // [RESUME FIX]
 });
 window.addEventListener('pageshow', (e) => {
   diagLog('DOC', 'pageshow persisted=' + e.persisted);
@@ -2694,6 +2695,67 @@ btnMakeOriginalFormat.addEventListener('click', async () => {
 //     최소 정책: 열린 오버레이/패널부터 닫고 → 검침 화면이면 현장 선택으로 →
 //     더 돌아갈 데가 없으면 그때만 앱을 종료한다.
 // =====================================================================
+// =====================================================================
+// [RESUME FIX] 복귀(포그라운드) 시 카메라 프리뷰 재생 재개 + 마이크 듣기 세션 재시작.
+//
+// 원인: 안드로이드 WebView는 화면이 안 보이는 동안 배터리 절약을 위해
+// <video> 렌더링과 마이크 세션을 자체적으로 멈춘다. 하지만 JS 쪽 스트림
+// 객체(camStream) 자체는 안 죽어서 "살아있다"고 나오는데, 지금까지 이 앱은
+// 복귀했을 때 "다시 재생해/다시 들어"라고 아무것도 시키지 않았다 — 그래서
+// 카메라는 백그라운드 들어가기 직전 프레임에 멈춰있고, 마이크도 바로 안 됐다.
+//
+// 여기서는 새 음성/카메라 로직을 만들지 않는다 — 이미 있는 startCamera(),
+// startAndroidListening()/stopAndroidListening(), startWebListening()/
+// stopWebListening()을 그대로 재사용해서 "다시 켜라"는 신호만 준다.
+// =====================================================================
+let lastResumeHandledAt = 0;
+async function resumeMediaOnForeground(){
+  // appStateChange와 visibilitychange가 거의 동시에 겹쳐 들어올 수 있어서
+  // (안드로이드 네이티브에서 둘 다 등록돼 있음), 짧은 시간 안의 중복 호출은
+  // 건너뛴다 — 마이크 세션을 두 번 연속 stop/start 하면서 꼬이는 걸 막기 위함.
+  const now = performance.now();
+  if(now - lastResumeHandledAt < 800){
+    diagLog('RESUME', 'skipped (debounced)');
+    return;
+  }
+  lastResumeHandledAt = now;
+  diagLog('RESUME', 'handling foreground resume');
+
+  // 1) 카메라 — 프리뷰가 멈춘 마지막 프레임 그대로 굳어있는 문제를 고친다.
+  if(camStream){
+    const track = camStream.getVideoTracks()[0];
+    if(!track || track.readyState !== 'live'){
+      diagLog('CAMERA', 'track dead on resume -> restart via startCamera()');
+      camStream = null;
+      startCamera();
+    } else {
+      try{
+        await camPreview.play();
+        diagLog('CAMERA', 'preview play() resumed');
+      }catch(err){
+        diagLog('CAMERA', 'preview play() failed: ' + err.message);
+      }
+    }
+  } else if(currentPreset){
+    // 현장에 들어와 있는데 카메라가 아예 없다면(권한 게이트를 건너뛴 경우 등) 새로 시작.
+    diagLog('CAMERA', 'no stream but site active -> startCamera()');
+    startCamera();
+  }
+
+  // 2) 마이크 — 사용자가 실제로 듣기를 켜둔 상태(listening===true)였을 때만
+  //    백그라운드 중 끊겼을 세션을 정지→재시작으로 깨끗하게 다시 연다.
+  if(listening){
+    if(isAndroidNative()){
+      stopAndroidListening();
+      startAndroidListening();
+    } else {
+      stopWebListening();
+      startWebListening();
+    }
+    diagLog('MIC', 'listening session restarted on resume');
+  }
+}
+
 if(isAndroidNative() && window.Capacitor.Plugins.App){
   window.Capacitor.Plugins.App.addListener('backButton', () => {
     if(copySummaryOverlay.classList.contains('show')){ copySummaryOverlay.classList.remove('show'); return; }
@@ -2709,6 +2771,7 @@ if(isAndroidNative() && window.Capacitor.Plugins.App){
   window.Capacitor.Plugins.App.addListener('appStateChange', ({ isActive }) => {
     diagLog('APP', isActive ? 'foreground' : 'background');
     diagLog('CAMERA', camStream ? 'stream alive' : 'stream null/gone');
+    if(isActive){ resumeMediaOnForeground(); } // [RESUME FIX]
   });
 }
 
