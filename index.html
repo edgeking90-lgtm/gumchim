@@ -528,19 +528,25 @@
 <body>
 
 <!-- [DIAGNOSTIC BUILD] PC/USB 디버깅 없이 폰 화면만으로 로그를 볼 수 있게 하는 임시 패널.
-     원인 확정 후 이 블록과 diagLog()의 화면표시 부분은 전부 제거한다. -->
-<div id="diag-panel" style="
+     기본은 한 줄짜리 접힌 바 — 탭하면 펼쳐진다. 원인 확정 후 이 블록과
+     diagLog()의 화면표시 부분은 전부 제거한다. -->
+<div id="diag-bar" style="
   position:fixed; left:0; right:0; bottom:0; z-index:99999;
+  background:rgba(0,0,0,0.92); color:#7CFC00; font-family:monospace; font-size:11px;
+  padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);
+  display:flex; align-items:center; justify-content:space-between;
+" onclick="document.getElementById('diag-panel').classList.toggle('diag-open'); document.getElementById('diag-bar-label').textContent = document.getElementById('diag-panel').classList.contains('diag-open') ? '로그 접기 ▾' : '로그 펼치기 ▸';">
+  <span id="diag-bar-label">로그 펼치기 ▸</span>
+  <button id="diag-clear-btn" style="background:#333; color:#fff; border:none; border-radius:6px; font-size:10px; padding:4px 8px;" type="button">지우기</button>
+</div>
+<div id="diag-panel" style="
+  display:none;
+  position:fixed; left:0; right:0; bottom:34px; z-index:99998;
   max-height:34vh; overflow-y:auto; background:rgba(0,0,0,0.92);
   color:#7CFC00; font-family:monospace; font-size:10px; line-height:1.45;
-  padding:6px 8px calc(env(safe-area-inset-bottom) + 6px);
-  white-space:pre-wrap; word-break:break-all; border-top:1px solid #333;
+  padding:6px 8px; white-space:pre-wrap; word-break:break-all; border-top:1px solid #333;
 "></div>
-<button id="diag-clear-btn" style="
-  position:fixed; right:6px; z-index:100000; bottom:calc(34vh + 6px);
-  background:#333; color:#fff; border:none; border-radius:6px;
-  font-size:10px; padding:4px 8px;
-" type="button">로그 지우기</button>
+<style>#diag-panel.diag-open{ display:block; }</style>
 
 
 <!-- 최초 진입 시 권한 요청 게이트 -->
@@ -819,7 +825,8 @@ diagLog('SESSION', DIAG_SESSION_ID);
 // 스크롤 없이 처음부터 다시 보고 싶을 때만 쓰는 용도. 실제 로그 자체(콘솔)는 안 지워진다.
 const diagClearBtn = document.getElementById('diag-clear-btn');
 if(diagClearBtn){
-  diagClearBtn.addEventListener('click', () => {
+  diagClearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
     const panel = document.getElementById('diag-panel');
     if(panel) panel.innerHTML = '';
   });
