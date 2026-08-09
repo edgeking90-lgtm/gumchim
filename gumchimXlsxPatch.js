@@ -1,7 +1,5 @@
 /**
  * Gumchim Excel 원본 왕복 — Open XML package 최소 패치.
- * (내용은 검증된 gumchimXlsxPatch.js와 동일 — 번들러 없는 이 프로젝트 관례에 맞춰
- *  CommonJS 대신 전역 스코프에 window.GumchimXlsxPatch로 노출만 다르게 함)
  *
  * 핵심 원칙:
  * - 워크시트 XML 전체를 DOMParser/XMLSerializer로 재직렬화하지 않는다.
@@ -12,6 +10,10 @@
  * - 셀 삽입 위치는 "문서에 나온 순서"가 아니라 "모든 셀의 진짜 열 번호를
  *   먼저 다 모아서 비교"해서 정한다.
  * - 타겟 셀이 이미 텍스트/수식/불리언/오류 타입이면 조용히 덮어쓰지 않고 실패한다.
+ * - 실제 사무실 파일 중에는 모든 태그에 네임스페이스 접두사를 붙이는 경우가 있다
+ *   (예: <x:row>, <x:c>, <x:v>, <x:f>). 접두사가 있든 없든(그리고 어떤 접두사든)
+ *   똑같이 동작해야 하므로, 정규식에서 여는/닫는 태그의 접두사를 백레퍼런스(\1)로
+ *   서로 맞춰 잡고, 새로 삽입하는 태그도 그 문서가 실제 쓰는 접두사를 그대로 재사용한다.
  */
 (function(global){
   'use strict';
@@ -30,15 +32,18 @@
     return { col: m[1], row: parseInt(m[2], 10) };
   }
 
-  const CELL_RE = /<c r="([A-Z]+)(\d+)"([^>]*?)(\/>|>([\s\S]*?)<\/c>)/g;
+  const CELL_RE = /<((?:[a-zA-Z0-9]+:)?)c r="([A-Z]+)(\d+)"([^>]*?)(\/>|>([\s\S]*?)<\/\1c>)/g;
+  const V_TAG_RE = /<((?:[a-zA-Z0-9]+:)?)v>([\s\S]*?)<\/\1v>/;
+  const F_TAG_RE = /<(?:[a-zA-Z0-9]+:)?f[ >]/;
 
   function findAllCellsInRow(rowXml){
     const cells = [];
     let m;
     CELL_RE.lastIndex = 0;
     while((m = CELL_RE.exec(rowXml)) !== null){
-      const [full, colLetter, , attrs, tail, body] = m;
+      const [full, prefix, colLetter, , attrs, tail, body] = m;
       cells.push({
+        prefix,
         col: colLetter,
         colNum: colToNum(colLetter),
         start: m.index,
@@ -52,7 +57,7 @@
     return cells;
   }
 
-  function patchCellInRowXml(rowXml, targetCol, targetRowNum, newValue){
+  function patchCellInRowXml(rowXml, targetCol, targetRowNum, newValue, rowPrefix){
     const targetRef = `${targetCol}${targetRowNum}`;
     const targetColNum = colToNum(targetCol);
     const cells = findAllCellsInRow(rowXml);
@@ -67,29 +72,31 @@
           `${targetRef}는 숫자 셀이 아닙니다(t="${cellType}"). 조용히 덮어쓰지 않고 패치를 중단합니다.`
         );
       }
-      if(existing.body.includes('<f>')){
+      if(F_TAG_RE.test(existing.body)){
         throw new TargetCellError(
           `${targetRef}는 수식 셀입니다. 수식 셀 생성/변경은 이번 범위에 없으므로 중단합니다.`
         );
       }
+      const p = existing.prefix;
       let newBody;
-      if(existing.body.includes('<v>')){
-        newBody = existing.body.replace(/<v>[\s\S]*?<\/v>/, `<v>${newValue}</v>`);
+      if(V_TAG_RE.test(existing.body)){
+        newBody = existing.body.replace(V_TAG_RE, `<${p}v>${newValue}</${p}v>`);
       } else {
-        newBody = existing.body + `<v>${newValue}</v>`;
+        newBody = existing.body + `<${p}v>${newValue}</${p}v>`;
       }
-      const newCell = `<c r="${targetRef}"${existing.attrs}>${newBody}</c>`;
+      const newCell = `<${p}c r="${targetRef}"${existing.attrs}>${newBody}</${p}c>`;
       return {
         xml: rowXml.slice(0, existing.start) + newCell + rowXml.slice(existing.end),
         action: 'replaced',
       };
     }
 
+    const p = cells.length > 0 ? cells[0].prefix : rowPrefix;
     const greater = cells.filter(c => c.colNum > targetColNum);
-    const newCell = `<c r="${targetRef}" t="n"><v>${newValue}</v></c>`;
+    const newCell = `<${p}c r="${targetRef}" t="n"><${p}v>${newValue}</${p}v></${p}c>`;
     if(greater.length === 0){
-      const closeIdx = rowXml.lastIndexOf('</row>');
-      if(closeIdx === -1) throw new TargetCellError(`${targetRowNum}행에서 </row>를 찾을 수 없습니다.`);
+      const closeIdx = rowXml.lastIndexOf(`</${rowPrefix}row>`);
+      if(closeIdx === -1) throw new TargetCellError(`${targetRowNum}행에서 </row> 닫는 태그를 찾을 수 없습니다.`);
       return { xml: rowXml.slice(0, closeIdx) + newCell + rowXml.slice(closeIdx), action: 'inserted' };
     }
     const insertBefore = greater.reduce((min, c) => (c.colNum < min.colNum ? c : min));
@@ -101,13 +108,14 @@
 
   function patchSheetXml(sheetXml, targetRef, newValue){
     const { col, row } = splitRef(targetRef);
-    const rowPattern = new RegExp(`<row r="${row}"[^>]*>[\\s\\S]*?<\\/row>`);
+    const rowPattern = new RegExp(`<((?:[a-zA-Z0-9]+:)?)row r="${row}"[^>]*>[\\s\\S]*?<\\/\\1row>`);
     const rm = rowPattern.exec(sheetXml);
     if(!rm){
       throw new TargetCellError(`${row}행 자체를 워크시트 XML에서 찾을 수 없습니다.`);
     }
     const rowXml = rm[0];
-    const { xml: patchedRow, action } = patchCellInRowXml(rowXml, col, row, newValue);
+    const rowPrefix = rm[1];
+    const { xml: patchedRow, action } = patchCellInRowXml(rowXml, col, row, newValue, rowPrefix);
     const patchedXml =
       sheetXml.slice(0, rm.index) + patchedRow + sheetXml.slice(rm.index + rowXml.length);
     return { xml: patchedXml, action };
