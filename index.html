@@ -773,6 +773,36 @@
 
 <script>
 // =====================================================================
+// [DIAGNOSTIC BUILD] 백그라운드/포그라운드 복귀 성능 원인 조사용 임시 계측.
+// 이 블록은 로그만 남긴다 — 기능 동작을 하나도 바꾸지 않는다.
+// 원인(WebView 재시작 / 카메라 리소스 / 단순 resume latency) 확정되면
+// 이 블록과 아래 표시된 계측 라인들은 전부 제거한다.
+//
+// 스크립트가 처음부터 다시 실행되면(=WebView/프로세스 재생성) SESSION_ID가
+// 완전히 새로 생긴다. 콘솔에서 [SESSION] 값이 바뀌면 그게 재시작의 증거다.
+// =====================================================================
+const DIAG_SESSION_ID = Math.random().toString(16).slice(2, 7);
+const DIAG_T0 = performance.now();
+function diagLog(tag, msg){
+  const rel = Math.round(performance.now() - DIAG_T0);
+  console.log('[' + tag + '] ' + msg + '  (perf=' + rel + 'ms, wall=' + new Date().toISOString() + ')');
+}
+diagLog('SESSION', DIAG_SESSION_ID);
+
+// 문서 레벨 lifecycle 신호 — 안드로이드 WebView가 실제로 이 이벤트들을
+// 보내는지 관찰하기 위한 것. 지금까지 이 앱은 이 이벤트들을 전혀 안 듣고 있었다.
+document.addEventListener('visibilitychange', () => {
+  diagLog('DOC', 'visibilitychange -> ' + document.visibilityState);
+});
+window.addEventListener('pageshow', (e) => {
+  diagLog('DOC', 'pageshow persisted=' + e.persisted);
+});
+window.addEventListener('pagehide', (e) => {
+  diagLog('DOC', 'pagehide persisted=' + e.persisted);
+});
+// [DIAGNOSTIC BUILD 끝 — 아래부터는 기존 코드]
+
+// =====================================================================
 // 0. 서비스워커 등록 (오프라인 앱 셸) — https 환경에서만 동작
 // =====================================================================
 if ('serviceWorker' in navigator) {
@@ -1806,6 +1836,8 @@ btnMic.addEventListener('click', ()=>{
 // =====================================================================
 let camStream = null;
 async function startCamera(){
+  const __diagT0 = performance.now(); // [DIAGNOSTIC BUILD]
+  diagLog('CAMERA', 'start requested'); // [DIAGNOSTIC BUILD]
   camOverlayText.textContent = '카메라 준비 중…';
   try{
     camStream = await navigator.mediaDevices.getUserMedia({
@@ -1814,12 +1846,14 @@ async function startCamera(){
     camPreview.srcObject = camStream;
     camOverlay.classList.add('hidden');
     camLiveBadge.style.display = 'block';
+    diagLog('CAMERA', 'start OK ' + Math.round(performance.now() - __diagT0) + 'ms'); // [DIAGNOSTIC BUILD]
     return true;
   }catch(err){
     camOverlay.classList.remove('hidden');
     camOverlayText.textContent = '카메라를 쓸 수 없어요 — 음성/키패드만으로 검침을 계속할 수 있습니다';
     camLiveBadge.style.display = 'none';
     console.error('카메라 오류', err);
+    diagLog('CAMERA', 'start FAILED ' + Math.round(performance.now() - __diagT0) + 'ms — ' + err.message); // [DIAGNOSTIC BUILD]
     return false;
   }
 }
@@ -2096,7 +2130,7 @@ async function selectPreset(preset){
   // 권한 게이트를 건너뛴 경우 startCamera()가 아직 한 번도 호출 안 됐을 수 있다.
   // 그 상태로 두면 "카메라 준비 중…" 문구가 영원히 안 바뀌므로, 현장에 들어올 때
   // 한 번은 시도해본다. 실패해도(거부/미지원) 검침 자체엔 전혀 영향 없다.
-  if(!camStream){ startCamera(); }
+  if(!camStream){ startCamera(); } else { diagLog('CAMERA', 'existing stream (skip start)'); } // [DIAGNOSTIC BUILD]
 }
 
 // btnSwitchSite("현장 변경")와 홈 네비 탭이 공유하는 "홈으로 돌아가기" 로직.
@@ -2632,13 +2666,25 @@ if(isAndroidNative() && window.Capacitor.Plugins.App){
     if(siteContent.classList.contains('show')){ btnSwitchSite.click(); return; }
     window.Capacitor.Plugins.App.exitApp();
   });
+
+  // [DIAGNOSTIC BUILD] 이 앱이 지금까지 한 번도 안 듣던 이벤트를 로그 전용으로 처음 추가한다.
+  // 여기서 어떤 기능도 바꾸지 않는다 — background/foreground 신호가 실제로 오는지,
+  // 몇 번 오는지, 그 순간 카메라 스트림이 살아있는지만 관찰한다.
+  window.Capacitor.Plugins.App.addListener('appStateChange', ({ isActive }) => {
+    diagLog('APP', isActive ? 'foreground' : 'background');
+    diagLog('CAMERA', camStream ? 'stream alive' : 'stream null/gone');
+  });
 }
 
 (async function init(){
+  diagLog('INIT', 'start'); // [DIAGNOSTIC BUILD]
+  const __diagDbT0 = performance.now(); // [DIAGNOSTIC BUILD]
   db = await openDB();
+  diagLog('DB', 'openDB() ' + Math.round(performance.now() - __diagDbT0) + 'ms'); // [DIAGNOSTIC BUILD]
   await renderPresetList();
   setupRecognition();
   await skipGateIfAlreadyGranted();
+  diagLog('INIT', 'ready'); // [DIAGNOSTIC BUILD]
 })();
 </script>
 </body>
