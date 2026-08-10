@@ -96,6 +96,13 @@
     display:inline-block; font-size:10px; font-weight:700; letter-spacing:0.1em;
     color:var(--teal); text-transform:uppercase;
   }
+  .ho-row{ display:flex; align-items:baseline; justify-content:center; gap:10px; }
+  .ho-preview{
+    font-size:13px; font-weight:600; color:var(--muted); white-space:nowrap;
+    min-width:40px; flex:0 0 auto;
+  }
+  #prev-ho-preview-wrap{ text-align:right; }
+  #next-ho-preview-wrap{ text-align:left; }
   .location .ho{ font-size:40px; font-weight:700; letter-spacing:0.01em; color:var(--paper); line-height:1.1; margin-top:1px; }
   .location .type{
     display:inline-block; margin-top:1px; padding:2px 12px; border-radius:5px;
@@ -109,10 +116,11 @@
     background:var(--panel);
     border:1px solid var(--line);
     border-radius:8px;
-    padding:5px 14px;
+    padding:8px 14px;
     margin:5px 0;
     position:relative;
     flex:0 0 auto;
+    display:flex; align-items:center; gap:10px;
   }
   .meter-shell::before{
     content:"㎥"; position:absolute; top:5px; right:12px;
@@ -121,20 +129,25 @@
   .digits{
     font-family:"SF Mono","JetBrains Mono","Consolas",monospace;
     font-size:50px; font-weight:700; text-align:center; letter-spacing:0.04em;
-    color:var(--amber);
+    color:var(--paper);
     min-height:56px; line-height:56px; word-break:break-all;
+    flex:1; min-width:0;
   }
-  .digits.empty{ color:var(--amber-dim); font-size:15px; }
+  .digits.empty{ color:var(--muted); font-size:15px; }
   .digits .cursor{
-    display:inline-block; width:2px; height:32px; background:var(--amber);
+    display:inline-block; width:2px; height:32px; background:var(--teal);
     margin-left:4px; vertical-align:middle; animation:blink 1s step-start infinite;
   }
   @keyframes blink{ 50%{opacity:0;} }
 
-  .mic-status-line{
-    display:flex; align-items:center; gap:6px; flex:0 0 auto;
-    padding:0 4px; min-height:14px;
+  /* 숫자 옆 음성 수정 힌트 — "다시 말하기/수정" 접근을 항상 눈에 보이게 유지하되
+     주인공(숫자)보다 작게. mic-dot/mic-text/transcript는 리스닝 상태에 따라
+     JS가 그대로 갱신하는 기존 요소 그대로다 — 위치만 옮겼다. */
+  .mic-hint-inline{
+    display:flex; flex-direction:column; align-items:flex-end; gap:2px;
+    flex:0 0 auto; max-width:38%; text-align:right;
   }
+  .mic-hint-inline .mic-dot{ align-self:flex-end; }
   .mic-dot{ width:6px; height:6px; border-radius:50%; background:var(--muted); flex-shrink:0; }
   .mic-dot.live{
     background:var(--danger); box-shadow:0 0 0 0 rgba(255,82,82,0.6); animation:pulse 1.4s infinite;
@@ -144,10 +157,10 @@
     70%{box-shadow:0 0 0 10px rgba(255,82,82,0);}
     100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}
   }
-  .mic-text{ font-size:10px; color:var(--muted); flex-shrink:0; }
+  .mic-text{ font-size:10px; color:var(--muted); }
   .transcript{
     font-size:10px; color:var(--muted); overflow:hidden; text-overflow:ellipsis;
-    white-space:nowrap; flex:1; min-width:0;
+    white-space:nowrap; max-width:100%;
   }
 
   /* 대형 카메라 프리뷰 — 남는 세로 공간을 그대로 채운다 (화면마다 크기가 자동으로 맞춰짐) */
@@ -172,8 +185,19 @@
   /* 이전 지침 / 이번 사용량 / 평소 평균 / 평균 대비 — 얇은 한 줄, 색상 강조 없음
      (임계값 판정은 이 단계에서 만들지 않는다. 사실만 보여준다) */
   .usage-row{
-    display:flex; justify-content:space-between; flex:0 0 auto;
-    padding:4px 2px; margin-bottom:2px;
+    display:flex; flex-direction:column; gap:6px; flex:0 0 auto;
+    padding:8px 10px; margin-bottom:2px;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px;
+  }
+  .usage-history{ display:flex; flex-direction:column; align-items:center; gap:0px; }
+  .usage-hist-line{ display:flex; align-items:baseline; gap:8px; }
+  .usage-hist-line .usage-label{ font-size:11px; margin-bottom:0; }
+  .usage-hist-line .usage-value{ font-size:16px; }
+  .usage-hist-line.current .usage-value{ font-size:21px; color:var(--teal); }
+  .usage-arrow-down{ color:var(--muted); font-size:12px; line-height:1.4; }
+  .usage-stats-row{
+    display:flex; justify-content:space-between;
+    border-top:1px solid var(--line); padding-top:6px; margin-top:2px;
   }
   .usage-item{ text-align:center; flex:1; }
   .usage-label{ display:block; font-size:10px; color:var(--muted); margin-bottom:1px; }
@@ -190,8 +214,26 @@
     padding:3px 8px; border-radius:4px; letter-spacing:0.04em;
   }
   .cam-badge.live{ background:rgba(255,82,82,0.9); color:#fff; }
+  .cam-badge-auto{
+    position:absolute; top:8px; right:8px; z-index:4;
+    background:rgba(10,15,13,0.72); color:var(--teal); border:1px solid rgba(79,209,197,0.35);
+    font-size:10px; font-weight:800; padding:3px 8px; border-radius:4px; letter-spacing:0.02em;
+  }
+  /* 계량기를 화면 중앙에 맞추기 위한 최소한의 포커스 가이드 — 장식용 HUD가 아니라
+     실용적인 정렬 기준선. 실제 촬영/OCR 로직은 전혀 안 건드린다(순수 CSS 오버레이). */
+  .cam-focus-guide{
+    position:absolute; inset:16% 14%; pointer-events:none; z-index:3;
+  }
+  .fg-corner{
+    position:absolute; width:22px; height:22px;
+    border-color:rgba(79,209,197,0.65); border-style:solid; border-width:0;
+  }
+  .fg-tl{ top:0; left:0; border-top-width:2.5px; border-left-width:2.5px; border-top-left-radius:4px; }
+  .fg-tr{ top:0; right:0; border-top-width:2.5px; border-right-width:2.5px; border-top-right-radius:4px; }
+  .fg-bl{ bottom:0; left:0; border-bottom-width:2.5px; border-left-width:2.5px; border-bottom-left-radius:4px; }
+  .fg-br{ bottom:0; right:0; border-bottom-width:2.5px; border-right-width:2.5px; border-bottom-right-radius:4px; }
   .btn-manual-capture{
-    position:absolute; top:8px; right:8px; z-index:5;
+    position:absolute; bottom:8px; right:8px; z-index:5;
     background:rgba(10,15,13,0.72); color:var(--paper); border:1px solid rgba(234,231,222,0.35);
     font-size:11px; font-weight:700; padding:5px 10px; border-radius:6px;
   }
@@ -219,15 +261,15 @@
   .actions{ display:flex; gap:8px; flex:0 0 auto; margin:5px 0; }
   button{ font-family:inherit; border:none; cursor:pointer; }
   .btn-ok{
-    flex:1; background:var(--amber); color:#1a1400; font-size:17px; font-weight:800;
-    padding:13px 0; border-radius:8px; letter-spacing:0.02em;
+    flex:2; background:var(--teal); color:#04211d; font-size:17px; font-weight:800;
+    padding:14px 0; border-radius:8px; letter-spacing:0.02em;
     transition:transform .08s ease, opacity .15s ease;
   }
   .btn-ok:active{ transform:scale(0.97); }
   .btn-ok:disabled{ opacity:0.35; }
   .btn-redo{
-    width:70px; background:var(--panel-2); color:var(--paper); border:1px solid var(--line);
-    border-radius:8px; font-size:12px;
+    flex:1; background:transparent; color:var(--paper); border:1px solid var(--line);
+    border-radius:8px; font-size:13px; font-weight:600;
   }
   .secondary-row{ display:flex; gap:8px; flex:0 0 auto; }
   .btn-mic{
@@ -650,7 +692,11 @@
   <div id="active-screen">
     <div class="location">
       <span class="loc-badge">현재 위치</span>
-      <div class="ho" id="ho-label">-</div>
+      <div class="ho-row">
+        <span class="ho-preview" id="prev-ho-preview-wrap">‹ <span id="prev-ho-preview"></span></span>
+        <div class="ho" id="ho-label">-</div>
+        <span class="ho-preview" id="next-ho-preview-wrap"><span id="next-ho-preview"></span> ›</span>
+      </div>
       <div class="type cold" id="type-label">-</div>
     </div>
 
@@ -659,6 +705,13 @@
     <div class="camera-stage" id="camera-stage">
       <video id="cam-preview" autoplay playsinline muted></video>
       <div class="cam-badge live" id="cam-live-badge" style="display:none;">● REC</div>
+      <span class="cam-badge-auto">⚡ 자동</span>
+      <div class="cam-focus-guide" aria-hidden="true">
+        <span class="fg-corner fg-tl"></span>
+        <span class="fg-corner fg-tr"></span>
+        <span class="fg-corner fg-bl"></span>
+        <span class="fg-corner fg-br"></span>
+      </div>
       <button class="btn-manual-capture" id="btn-manual-capture" type="button">촬영</button>
       <div class="cam-overlay" id="cam-overlay">
         <div class="cam-overlay-text" id="cam-overlay-text">카메라 준비 중…</div>
@@ -667,6 +720,11 @@
 
     <div class="meter-shell">
       <div class="digits empty" id="digits">숫자를 말하세요<span class="cursor"></span></div>
+      <div class="mic-hint-inline">
+        <div class="mic-dot" id="mic-dot"></div>
+        <div class="mic-text" id="mic-text">마이크 대기 중</div>
+        <div class="transcript" id="transcript">&nbsp;</div>
+      </div>
     </div>
 
     <div class="ocr-row" id="ocr-row" style="display:none;">
@@ -678,34 +736,37 @@
     </div>
 
     <div class="usage-row" id="usage-row" style="display:none;">
-      <div class="usage-item">
-        <span class="usage-label">이전 지침</span>
-        <span class="usage-value" id="usage-prev">-</span>
+      <div class="usage-history">
+        <div class="usage-hist-line">
+          <span class="usage-label">지난달 검침</span>
+          <span class="usage-value" id="usage-prev">-</span>
+        </div>
+        <div class="usage-arrow-down">↓</div>
+        <div class="usage-hist-line current">
+          <span class="usage-label">이번 검침</span>
+          <span class="usage-value current" id="usage-current-reading">-</span>
+        </div>
       </div>
-      <div class="usage-item">
-        <span class="usage-label">이번 사용량</span>
-        <span class="usage-value" id="usage-now">-</span>
-      </div>
-      <div class="usage-item">
-        <span class="usage-label">평소 평균</span>
-        <span class="usage-value" id="usage-avg">-</span>
-      </div>
-      <div class="usage-item">
-        <span class="usage-label">평균 대비</span>
-        <span class="usage-value" id="usage-diff">-</span>
+      <div class="usage-stats-row">
+        <div class="usage-item">
+          <span class="usage-label">이번 사용량</span>
+          <span class="usage-value" id="usage-now">-</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">평소 평균</span>
+          <span class="usage-value" id="usage-avg">-</span>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">평균 대비</span>
+          <span class="usage-value" id="usage-diff">-</span>
+        </div>
       </div>
     </div>
     <div class="usage-empty" id="usage-empty" style="display:none;">비교 데이터 없음</div>
 
     <div class="actions">
-      <button class="btn-redo" id="btn-clear">다시 말하기</button>
-      <button class="btn-ok" id="btn-ok" disabled>저장하고 다음</button>
-    </div>
-
-    <div class="mic-status-line">
-      <div class="mic-dot" id="mic-dot"></div>
-      <div class="mic-text" id="mic-text">마이크 대기 중</div>
-      <div class="transcript" id="transcript">&nbsp;</div>
+      <button class="btn-redo" id="btn-clear">수정하기</button>
+      <button class="btn-ok" id="btn-ok" disabled>저장 · 다음 →</button>
     </div>
 
     <div class="secondary-row">
@@ -1207,6 +1268,7 @@ const routeStripEl = document.getElementById('route-strip');
 const usageRow = document.getElementById('usage-row');
 const usageEmpty = document.getElementById('usage-empty');
 const usagePrevEl = document.getElementById('usage-prev');
+const usageCurrentReadingEl = document.getElementById('usage-current-reading');
 const usageNowEl = document.getElementById('usage-now');
 const usageAvgEl = document.getElementById('usage-avg');
 const usageDiffEl = document.getElementById('usage-diff');
@@ -1301,6 +1363,13 @@ function renderRouteStrip(){
   const units = buildUniqueUnitRoute();
   const curUnitIdx = units.indexOf(currentItem.ho);
   if(curUnitIdx === -1){ routeStripEl.innerHTML = ''; return; }
+
+  // 헤더의 ‹이전호수 / 다음호수› 미리보기 — 동선 계산에 이미 있는 같은 배열에서 뽑는다.
+  const prevHoEl = document.getElementById('prev-ho-preview');
+  const nextHoEl = document.getElementById('next-ho-preview');
+  if(prevHoEl) prevHoEl.textContent = curUnitIdx > 0 ? units[curUnitIdx - 1] + '호' : '';
+  if(nextHoEl) nextHoEl.textContent = curUnitIdx < units.length - 1 ? units[curUnitIdx + 1] + '호' : '';
+
   // 목표 표시: 2008호 ✓ → 2007호 ✓ → 2006호 ● → 2005호 ○ (이전 2개 + 현재 + 다음 1개)
   const start = Math.max(0, curUnitIdx - 2);
   const end = Math.min(units.length - 1, curUnitIdx + 1);
@@ -1329,6 +1398,10 @@ function getCurrentUnitHistory(){
 
 // 편차는 판정기가 아니라 사실 표시다 — 임의의 이상/주의 임계값은 만들지 않는다.
 // 이번 사용량 = 현재 지침 - 이전 지침, 평균 대비 = 이번 사용량 - averageUsage (숫자 차이, %가 아님)
+function formatNum(n){
+  return (typeof n === 'number' && !isNaN(n)) ? n.toLocaleString('ko-KR') : '-';
+}
+
 function renderUsageStats(){
   const hist = getCurrentUnitHistory();
   if(!hist){
@@ -1340,19 +1413,22 @@ function renderUsageStats(){
   usageEmpty.style.display = 'none';
 
   const prev = hist.previousReading;
-  usagePrevEl.textContent = (typeof prev === 'number') ? prev : '-';
+  usagePrevEl.textContent = formatNum(prev);
 
   const stagedNum = staged === '' ? null : parseInt(staged, 10);
+  // "이번 검침" — 지난달 검침 바로 아래에 세로로 보여줄 현재 원본 지침값(사용량이 아님).
+  usageCurrentReadingEl.textContent = (stagedNum !== null && !isNaN(stagedNum)) ? formatNum(stagedNum) : '-';
+
   const hasUsage = (stagedNum !== null && !isNaN(stagedNum) && typeof prev === 'number');
   const usage = hasUsage ? (stagedNum - prev) : null;
-  usageNowEl.textContent = (usage !== null) ? usage : '-';
+  usageNowEl.textContent = (usage !== null) ? formatNum(usage) : '-';
 
   const avg = hist.averageUsage;
-  usageAvgEl.textContent = (typeof avg === 'number') ? avg : '-';
+  usageAvgEl.textContent = formatNum(avg);
 
   if(usage !== null && typeof avg === 'number'){
     const diff = usage - avg;
-    usageDiffEl.textContent = (diff > 0 ? '+' : '') + diff;
+    usageDiffEl.textContent = (diff > 0 ? '+' : '') + formatNum(diff);
   } else {
     usageDiffEl.textContent = '-';
   }
