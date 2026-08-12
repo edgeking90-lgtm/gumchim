@@ -1724,24 +1724,78 @@ btnExport.addEventListener('click', ()=>{
 // =====================================================================
 // 4. 한글 숫자 파싱 + 명령어 판별
 // =====================================================================
-const KOR_DIGIT = {'영':'0','공':'0','일':'1','이':'2','삼':'3','사':'4','오':'5','육':'6','유':'6','칠':'7','팔':'8','구':'9'};
+// 한자어 + 고유어를 한 사전에 같이 둔다 — 사람이 어느 쪽으로 부르든 같은 숫자로 받는다.
+// 주의: 반드시 "긴 단어부터" 매칭해야 한다. 예를 들어 고유어 "일곱"(7)을 글자 단위로
+// 훑으면 첫 글자 "일"이 한자어 "일"(1)과 우연히 같아서 7이 아니라 1로 잘못 먹힌다.
+// 그래서 아래 KOR_DIGIT_WORDS_SORTED는 항상 길이 내림차순으로 정렬해서 쓴다.
+const KOR_DIGIT_WORDS = {
+  '영':'0', '공':'0', '제로':'0',
+  '하나':'1', '한':'1', '일':'1',
+  '둘':'2', '두':'2', '이':'2',
+  '셋':'3', '세':'3', '삼':'3',
+  '넷':'4', '네':'4', '사':'4',
+  '다섯':'5', '오':'5',
+  '여섯':'6', '육':'6', '유':'6',
+  '일곱':'7', '칠':'7',
+  '여덟':'8', '팔':'8',
+  '아홉':'9', '구':'9'
+};
+const KOR_DIGIT_WORDS_SORTED = Object.keys(KOR_DIGIT_WORDS).sort((a, b) => b.length - a.length);
+const PLACE_VALUE_WORDS = /천|백|십|만/;
+
+// digits뿐 아니라 "원문 중 몇 글자가 실제 숫자 단어로 매칭됐는지"도 같이 돌려준다.
+// 이건 여러 인식 후보 중 "가장 정상적으로 해석되는" 후보를 고를 때 기준으로 쓴다.
+function extractDigitsDetailed(text){
+  const numMatch = text.match(/\d+/g);
+  if(numMatch && numMatch.join('').length >= 1){
+    const digits = numMatch.join('');
+    return { digits, matchedLen: digits.length, totalLen: text.length };
+  }
+  if(PLACE_VALUE_WORDS.test(text)) return null; // 지원하지 않는 형식 — 무시하고 재시도 유도
+
+  let result = '';
+  let matchedLen = 0;
+  let i = 0;
+  while(i < text.length){
+    let matchedWord = null;
+    for(const word of KOR_DIGIT_WORDS_SORTED){
+      if(text.startsWith(word, i)){ matchedWord = word; break; }
+    }
+    if(matchedWord){
+      result += KOR_DIGIT_WORDS[matchedWord];
+      matchedLen += matchedWord.length;
+      i += matchedWord.length;
+    } else {
+      i += 1; // 숫자 단어가 아닌 글자(조사, 필러 등)는 건너뛴다
+    }
+  }
+  return { digits: result, matchedLen, totalLen: text.length };
+}
+
+function extractDigits(text){
+  const detail = extractDigitsDetailed(text);
+  return detail ? detail.digits : null;
+}
 // 현장 표준은 "자릿수를 하나씩 읽기" (일이삼팔 → 1238) 뿐이다.
 // "천이백삼십팔" 같은 자릿값 표현은 지원하지 않는데, 이걸 그냥 무시하면
 // 첫째/셋째 글자만 남아 "238"처럼 조용히 틀린 값이 만들어질 수 있다.
-// 그래서 자릿값 단어가 섞여 있으면 아예 숫자를 뽑지 않고 재입력을 유도한다.
-const PLACE_VALUE_WORDS = /천|백|십|만/;
-function extractDigits(text){
-  const numMatch = text.match(/\d+/g);
-  if(numMatch && numMatch.join('').length >= 1) return numMatch.join('');
-  if(PLACE_VALUE_WORDS.test(text)) return null; // 지원하지 않는 형식 — 무시하고 재시도 유도
-  let result = '';
-  for(const ch of text){
-    if(KOR_DIGIT[ch] !== undefined) result += KOR_DIGIT[ch];
-  }
-  return result;
-}
+// 그래서 자릿값 단어가 섞여 있으면 아예 숫자를 뽑지 않고 재입력을 유도한다(위 PLACE_VALUE_WORDS 체크).
 function isConfirmCommand(text){ return /오케이|오 ?케이|확인|컨펌|okay|ok/i.test(text); }
 function isClearCommand(text){ return /정정|다시|취소|리셋/.test(text); }
+
+// 인식 엔진이 여러 후보를 줄 때, 그중 "가장 정상적으로 숫자로 풀리는" 원문을 고른다.
+// 엔진이 준 순위(신뢰도 순서)는 그대로 존중하고, 그 순서대로 훑다가 명령어이거나
+// 숫자가 하나라도 나오는 첫 후보를 쓴다. 전부 실패하면 기존과 동일하게 1순위를 그대로 쓴다
+// (그래야 "숫자를 한 자리씩 말해주세요" 같은 기존 실패 안내가 그대로 유지된다).
+function pickBestDigitCandidate(candidates){
+  for(const text of candidates){
+    if(!text) continue;
+    if(isConfirmCommand(text) || isClearCommand(text)) return text;
+    const detail = extractDigitsDetailed(text);
+    if(detail && detail.digits && detail.digits.length > 0) return text;
+  }
+  return candidates[0] || '';
+}
 
 // =====================================================================
 // 5. 음성 입력 — 웹(Web Speech API)과 안드로이드 네이티브(Capacitor 플러그인) 어댑터.
@@ -1787,13 +1841,18 @@ function setupWebRecognition(){
   recognition.lang = 'ko-KR';
   recognition.continuous = true;
   recognition.interimResults = true;
+  recognition.maxAlternatives = 5; // 여러 대안 중 숫자로 가장 잘 풀리는 걸 고른다
 
   recognition.onresult = (event)=>{
     let finalText = '';
     let interimText = '';
     for(let i=event.resultIndex; i<event.results.length; i++){
-      const t = event.results[i][0].transcript;
-      if(event.results[i].isFinal) finalText += t; else interimText += t;
+      const alternatives = [];
+      for(let j=0; j<event.results[i].length; j++){
+        alternatives.push(event.results[i][j].transcript);
+      }
+      const best = pickBestDigitCandidate(alternatives);
+      if(event.results[i].isFinal) finalText += best; else interimText += best;
     }
     if(interimText) transcriptEl.textContent = interimText;
     if(finalText){
@@ -1901,9 +1960,10 @@ async function runAndroidListenLoop(){
         language: 'ko-KR',
         partialResults: false,
         popup: false,
-        maxResults: 1
+        maxResults: 5 // 후보를 여러 개 받아서 그중 숫자로 가장 잘 풀리는 걸 고른다
       });
-      const text = (result && result.matches && result.matches[0]) || '';
+      const candidates = (result && result.matches) || [];
+      const text = pickBestDigitCandidate(candidates);
       if(text){
         transcriptEl.textContent = text;
         handleUtterance(text.trim());
