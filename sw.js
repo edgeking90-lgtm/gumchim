@@ -1,14 +1,15 @@
 // 검침 어시스턴트 - 오프라인 앱 셸 캐시
 // 원칙: "인터넷 없음은 오류 상태가 아니다. 정상적인 현장 운영 상태 중 하나다."
 
-const CACHE_NAME = 'gumchim-shell-v3';
+const CACHE_NAME = 'gumchim-shell-v4';
 const SHELL_FILES = [
   './index.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
   './gumchimXlsxPatch.js',
-  './gumchimXlsxExport.js'
+  './gumchimXlsxExport.js',
+  './gumchimExcelAutoImport.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -27,7 +28,6 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 앱 셸은 캐시 우선 (오프라인에서도 항상 뜬다)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
