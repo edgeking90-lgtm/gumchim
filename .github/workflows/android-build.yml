@@ -35,7 +35,7 @@ jobs:
         # Capacitor의 webDir(www)만 여기서 임시로 만든다 — 커밋되지 않는 빌드 산출물이다.
         run: |
           mkdir -p www
-          cp index.html manifest.json sw.js icon-192.png icon-512.png www/
+          cp index.html manifest.json sw.js icon-192.png icon-512.png gumchimXlsxPatch.js gumchimXlsxExport.js gumchimExcelAutoImport.js www/
 
       - name: Capacitor sync (웹 자산 + 네이티브 플러그인 반영)
         run: npx cap sync android
