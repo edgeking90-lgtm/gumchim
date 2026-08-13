@@ -309,6 +309,24 @@
   .keypad button:active{ background:#223129; }
   .keypad button.wide{ font-size:15px; color:var(--muted); }
 
+  /* 키패드 사용 중 지금 누르고 있는 값을 크게 보여주는 실시간 미리보기 */
+  .keypad-preview{
+    font-family:"SF Mono","JetBrains Mono","Consolas",monospace;
+    font-size:44px; font-weight:800; color:var(--paper); text-align:center;
+    letter-spacing:0.03em; padding:10px 0; margin-bottom:10px;
+    background:var(--panel-2); border:1px solid var(--line); border-radius:12px;
+    min-height:58px; line-height:58px;
+  }
+  .keypad-preview.empty{ color:var(--muted); font-size:16px; font-weight:600; }
+
+  /* 숫자를 다 누른 뒤 "닫기"보다 이걸 누르는 게 훨씬 중요한 동작이라 크고 확실하게 둔다 */
+  .keypad-confirm{
+    width:100%; margin-top:10px; background:var(--teal); color:#04211d;
+    border:none; border-radius:12px; padding:15px 0; font-size:17px; font-weight:800;
+  }
+  .keypad-confirm:active{ transform:scale(0.98); }
+  .keypad-confirm:disabled{ opacity:0.35; }
+
   /* 기록 패널 — 평소엔 숨겨져 있고, 버튼으로 열어야 보이는 별도 화면.
      핵심 검침 루프(active-screen)는 이 패널과 무관하게 항상 한 화면에 고정된다. */
   #records-panel{
@@ -851,12 +869,14 @@
       <span>숫자로 입력</span>
       <button class="keypad-close" id="btn-keypad-close">닫기</button>
     </div>
+    <div class="keypad-preview empty" id="keypad-preview">숫자를 눌러주세요</div>
     <div class="keypad" id="keypad">
       <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
       <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
       <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-      <button class="wide" data-k="clear">지우기</button><button data-k="0">0</button><button class="wide" data-k="back">⌫</button>
+      <button class="wide" data-k="clear">전체삭제</button><button data-k="0">0</button><button class="wide" data-k="back">⌫</button>
     </div>
+    <button class="keypad-confirm" id="btn-keypad-confirm" disabled>확정하고 다음 →</button>
   </div>
 </div>
 
@@ -1600,6 +1620,16 @@ function renderStaged(){
     digitsEl.classList.remove('empty');
     btnOk.disabled = false;
   }
+  if(keypadPreview){
+    if(staged === ''){
+      keypadPreview.textContent = '숫자를 눌러주세요';
+      keypadPreview.classList.add('empty');
+    } else {
+      keypadPreview.textContent = staged;
+      keypadPreview.classList.remove('empty');
+    }
+  }
+  if(btnKeypadConfirm){ btnKeypadConfirm.disabled = (staged === ''); }
   scheduleOcrCheck();
   renderUsageStats();
 }
@@ -2261,6 +2291,8 @@ const btnKeypadToggle = document.getElementById('btn-keypad-toggle');
 const keypad = document.getElementById('keypad');
 const keypadOverlay = document.getElementById('keypad-overlay');
 const btnKeypadClose = document.getElementById('btn-keypad-close');
+const keypadPreview = document.getElementById('keypad-preview');
+const btnKeypadConfirm = document.getElementById('btn-keypad-confirm');
 
 function openKeypad(){ keypadOverlay.classList.add('show'); }
 function closeKeypad(){ keypadOverlay.classList.remove('show'); }
@@ -2277,6 +2309,13 @@ keypad.addEventListener('click', (e)=>{
   else if(k === 'back'){ staged = staged.slice(0, -1); }
   else { staged += k; }
   renderStaged();
+});
+// 숫자를 다 누른 뒤 "닫기"보다 이게 훨씬 중요한 동작이다 — 계량기 보고 → 누르고 →
+// 미리보기로 확인하고 → 바로 확정, 다음 세대로. 확정 로직 자체는 기존
+// confirmCurrent()를 그대로 재사용한다(새로 안 만듦) — 그다음 키패드만 닫는다.
+btnKeypadConfirm.addEventListener('click', async ()=>{
+  await confirmCurrent();
+  closeKeypad();
 });
 
 btnMic.addEventListener('click', ()=>{
