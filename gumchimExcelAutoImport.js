@@ -82,6 +82,7 @@
 
     const unitsByHo = {};
     const cellMap = {};
+    const cellMonth = {}; // 세로형(월별) 파일에서만 채워짐 — { "호수_종류": 9 } 같은 형태
     const rowOrder = [];
     const warnings = [];
     let skipped = 0;
@@ -116,10 +117,11 @@
       unitsByHo[ho].history[gubun] = histEntry;
 
       if(lastFilledPos + 1 < monthReadingCols.length){
-        const nextColIdx = monthReadingCols[lastFilledPos + 1].colIdx;
-        const targetCell = colIndexToLetter(nextColIdx) + excelRow;
+        const nextCol = monthReadingCols[lastFilledPos + 1];
+        const targetCell = colIndexToLetter(nextCol.colIdx) + excelRow;
         const key = ho + '_' + gubun;
         cellMap[key] = targetCell;
+        cellMonth[key] = nextCol.month; // 세로형(월별) 파일에서만 의미 있는 "몇 월이 다음 대상인지"
         rowOrder.push(key);
       }
     });
@@ -143,7 +145,8 @@
         sheet: sheetName,
         columns: meterTypes,
         rowOrder,
-        cellMap
+        cellMap,
+        cellMonth
       },
       skipped,
       warnings
