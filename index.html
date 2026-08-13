@@ -373,6 +373,18 @@
   }
   .office-section-title{ font-size:13px; font-weight:700; color:var(--paper); margin-bottom:6px; }
   .office-mapping-status{ font-size:12px; color:var(--muted); margin-bottom:10px; }
+  .route-order-status{ font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .route-edit-item{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 6px; border-bottom:1px solid var(--line);
+  }
+  .route-edit-item .re-idx{ width:28px; font-size:11px; color:var(--muted); text-align:right; flex-shrink:0; }
+  .route-edit-item .re-ho{ flex:1; font-size:14px; font-weight:700; color:var(--paper); }
+  .route-edit-item .re-btn{
+    width:34px; height:34px; background:var(--panel-2); border:1px solid var(--line);
+    color:var(--paper); border-radius:6px; font-size:14px; flex-shrink:0;
+  }
+  .route-edit-item .re-btn:disabled{ opacity:0.3; }
   .original-file-status{ font-size:12px; color:var(--muted); margin:10px 0; }
   .btn-row-office{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
   .btn-row-office .import-label{
@@ -805,6 +817,23 @@
   </div>
 </div>
 
+<div class="keypad-overlay" id="route-edit-overlay">
+  <div class="keypad-sheet">
+    <div class="keypad-sheet-head">
+      <span>동선 직접 편집</span>
+      <button class="keypad-close" id="btn-route-edit-close">닫기</button>
+    </div>
+    <div style="display:flex; gap:8px; padding:4px 4px 8px;">
+      <button id="btn-route-edit-reset" style="flex:1; background:transparent; border:1px solid var(--line); color:var(--muted); border-radius:6px; padding:8px 0; font-size:12px;">현재 자동정렬로 초기화</button>
+    </div>
+    <div id="route-edit-list" style="max-height:48vh; overflow-y:auto;"></div>
+    <div style="display:flex; gap:8px; padding:10px 4px 4px;">
+      <button id="btn-route-edit-cancel" style="flex:1; background:transparent; border:1px solid var(--line); color:var(--paper); border-radius:8px; padding:12px 0; font-size:14px;">취소</button>
+      <button id="btn-route-edit-save" style="flex:2; background:var(--teal); color:#04211d; border:none; border-radius:8px; padding:12px 0; font-size:15px; font-weight:800;">이 순서로 저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="keypad-overlay" id="keypad-overlay">
   <div class="keypad-sheet">
     <div class="keypad-sheet-head">
@@ -829,7 +858,12 @@
 
   <div class="office-section">
     <div class="office-section-title">현장 동선</div>
-    <button class="btn-copy-office" id="btn-toggle-route-order" style="width:100%;">동선: 높은 층부터</button>
+    <div class="route-order-status" id="route-order-status">자동 정렬 사용 중</div>
+    <div class="btn-row-office">
+      <button class="btn-copy-office" id="btn-toggle-floor-order" style="flex:1;">층: 높은 층부터</button>
+      <button class="btn-copy-office" id="btn-toggle-unit-order" style="flex:1;">호실: 큰 호수부터</button>
+    </div>
+    <button class="btn-copy-office" id="btn-edit-custom-route" style="width:100%; margin-top:8px;">동선 직접 편집</button>
   </div>
 
   <div class="office-section">
@@ -1264,8 +1298,20 @@ function dbGetOriginalFile(outputMappingId){
 //    있었다(진짜 순서는 그냥 units 배열 순서 그대로였음) — 이제 이 필드를 실제로 읽어서
 //    정렬한다. 위치(층/호)를 모르는 세대가 하나라도 있으면 그 세대는 원래 있던
 //    상대 순서 그대로 둔다(stable sort) — 안전한 기본값이다.
+//
+//    routeMode === 'custom'이면 층/호 정렬 대신 preset.customUnitOrder(사용자가 직접
+//    편집한 호수 순서 배열)를 그대로 쓴다. 이 배열에 없는 세대(나중에 추가되는 등)는
+//    조용히 사라지면 안 되므로 뒤쪽에 그대로 이어붙인다.
 // =====================================================================
 function sortedUnitsForPreset(preset){
+  if(preset.routeMode === 'custom' && Array.isArray(preset.customUnitOrder) && preset.customUnitOrder.length > 0){
+    const unitsByHo = {};
+    preset.units.forEach(u => { unitsByHo[u.ho] = u; });
+    const ordered = preset.customUnitOrder.map(ho => unitsByHo[ho]).filter(Boolean);
+    const orderedSet = new Set(preset.customUnitOrder);
+    const remaining = preset.units.filter(u => !orderedSet.has(u.ho));
+    return ordered.concat(remaining);
+  }
   const floorDir = preset.floorOrder === 'asc' ? 1 : -1; // 기본값 desc(높은 층부터)
   const unitDir = preset.unitOrderWithinFloor === 'asc' ? 1 : -1;
   return preset.units.slice().sort((a, b) => {
@@ -2582,7 +2628,7 @@ async function selectPreset(preset){
 
   renderLog();
   renderCurrent();
-  updateRouteToggleLabel();
+  updateRouteOrderUi();
 
   // 권한 게이트를 건너뛴 경우 startCamera()가 아직 한 번도 호출 안 됐을 수 있다.
   // 그 상태로 두면 "카메라 준비 중…" 문구가 영원히 안 바뀌므로, 현장에 들어올 때
@@ -2590,27 +2636,121 @@ async function selectPreset(preset){
   if(!camStream){ startCamera(); } else { diagLog('CAMERA', 'existing stream (skip start)'); } // [DIAGNOSTIC BUILD]
 }
 
-// 현장 동선(층/호수 오름차순↔내림차순) 토글 — 층/호수 정렬 방향만 뒤집는다.
+// 현장 동선 — 층 순서/호실 순서를 각각 독립적으로 뒤집을 수 있고("층은 높은
+// 것부터, 호실은 낮은 것부터" 같은 조합도 가능), 그걸로도 부족하면 아예 사용자가
+// 직접 순서를 편집하는 "커스텀 모드"도 있다.
+//
 // 이미 확정된 entries는 전혀 안 건드린다(entries는 순서 개념이 없는 key-value라
 // 안전함) — SEQUENCE만 새로 만들고 renderCurrent()가 findNextIdx()로 알아서
-// 기존 진행상황 기준 올바른 위치를 다시 잡아준다. 바꾼 방향은 Preset에 저장돼서
+// 기존 진행상황 기준 올바른 위치를 다시 잡아준다. 바꾼 설정은 Preset에 저장돼서
 // 다음에 같은 현장에 들어와도 유지된다(dbSavePreset은 기존 함수 그대로 재사용).
-function updateRouteToggleLabel(){
-  if(!currentPreset || !btnToggleRouteOrder) return;
-  const isDesc = currentPreset.floorOrder !== 'asc';
-  btnToggleRouteOrder.textContent = isDesc ? '동선: 높은 층부터' : '동선: 낮은 층부터';
-}
-const btnToggleRouteOrder = document.getElementById('btn-toggle-route-order');
-btnToggleRouteOrder.addEventListener('click', async () => {
+//
+// 자동(층/호실) 토글을 누르면 커스텀 모드는 자동으로 꺼진다 — 두 모드가 동시에
+// "진짜 순서"인 척 서로 충돌하지 않게 하기 위함이다.
+function updateRouteOrderUi(){
   if(!currentPreset) return;
-  const newOrder = currentPreset.floorOrder === 'asc' ? 'desc' : 'asc';
-  currentPreset.floorOrder = newOrder;
-  currentPreset.unitOrderWithinFloor = newOrder;
+  const statusEl = document.getElementById('route-order-status');
+  const isCustom = currentPreset.routeMode === 'custom' &&
+    Array.isArray(currentPreset.customUnitOrder) && currentPreset.customUnitOrder.length > 0;
+  statusEl.textContent = isCustom ? '커스텀 순서 사용 중 (직접 편집한 순서)' : '자동 정렬 사용 중';
+
+  const floorDesc = currentPreset.floorOrder !== 'asc';
+  btnToggleFloorOrder.textContent = floorDesc ? '층: 높은 층부터' : '층: 낮은 층부터';
+  const unitDesc = currentPreset.unitOrderWithinFloor !== 'asc';
+  btnToggleUnitOrder.textContent = unitDesc ? '호실: 큰 호수부터' : '호실: 작은 호수부터';
+}
+
+const btnToggleFloorOrder = document.getElementById('btn-toggle-floor-order');
+const btnToggleUnitOrder = document.getElementById('btn-toggle-unit-order');
+
+btnToggleFloorOrder.addEventListener('click', async () => {
+  if(!currentPreset) return;
+  currentPreset.floorOrder = currentPreset.floorOrder === 'asc' ? 'desc' : 'asc';
+  currentPreset.routeMode = 'auto';
   await dbSavePreset(currentPreset);
   SEQUENCE = buildSequenceFromPreset(currentPreset);
   renderCurrent();
   renderLog();
-  updateRouteToggleLabel();
+  updateRouteOrderUi();
+});
+
+btnToggleUnitOrder.addEventListener('click', async () => {
+  if(!currentPreset) return;
+  currentPreset.unitOrderWithinFloor = currentPreset.unitOrderWithinFloor === 'asc' ? 'desc' : 'asc';
+  currentPreset.routeMode = 'auto';
+  await dbSavePreset(currentPreset);
+  SEQUENCE = buildSequenceFromPreset(currentPreset);
+  renderCurrent();
+  renderLog();
+  updateRouteOrderUi();
+});
+
+// ---- 커스텀 동선 편집 ----
+// 화면이 작은 폰에서 안정적으로 되는 걸 우선해서, 드래그 대신 항목마다 위/아래
+// 버튼으로 한 칸씩 옮기는 방식으로 만들었다. "저장"을 눌러야만 실제로 적용된다 —
+// 편집 중에는 아무것도 확정되지 않는다.
+let routeEditWorkingOrder = [];
+
+function renderRouteEditList(){
+  const listEl = document.getElementById('route-edit-list');
+  listEl.innerHTML = '';
+  routeEditWorkingOrder.forEach((ho, idx) => {
+    const row = document.createElement('div');
+    row.className = 'route-edit-item';
+    row.innerHTML =
+      '<span class="re-idx">' + (idx + 1) + '</span>' +
+      '<span class="re-ho">' + ho + '호</span>' +
+      '<button class="re-btn" data-dir="up" data-idx="' + idx + '"' + (idx === 0 ? ' disabled' : '') + '>▲</button>' +
+      '<button class="re-btn" data-dir="down" data-idx="' + idx + '"' + (idx === routeEditWorkingOrder.length - 1 ? ' disabled' : '') + '>▼</button>';
+    listEl.appendChild(row);
+  });
+  listEl.querySelectorAll('.re-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.getAttribute('data-idx'), 10);
+      const dir = btn.getAttribute('data-dir');
+      const swapWith = dir === 'up' ? idx - 1 : idx + 1;
+      if(swapWith < 0 || swapWith >= routeEditWorkingOrder.length) return;
+      const tmp = routeEditWorkingOrder[idx];
+      routeEditWorkingOrder[idx] = routeEditWorkingOrder[swapWith];
+      routeEditWorkingOrder[swapWith] = tmp;
+      renderRouteEditList();
+    });
+  });
+}
+
+document.getElementById('btn-edit-custom-route').addEventListener('click', () => {
+  if(!currentPreset) return;
+  routeEditWorkingOrder = sortedUnitsForPreset(currentPreset).map(u => u.ho);
+  renderRouteEditList();
+  document.getElementById('route-edit-overlay').classList.add('show');
+});
+
+document.getElementById('btn-route-edit-reset').addEventListener('click', () => {
+  if(!currentPreset) return;
+  // 편집 중인 목록만 "지금 층/호실 자동정렬 기준"으로 초기화한다 — 아직 저장은 안 됨.
+  const autoBasis = Object.assign({}, currentPreset, { routeMode: 'auto' });
+  routeEditWorkingOrder = sortedUnitsForPreset(autoBasis).map(u => u.ho);
+  renderRouteEditList();
+});
+
+document.getElementById('btn-route-edit-cancel').addEventListener('click', () => {
+  document.getElementById('route-edit-overlay').classList.remove('show');
+});
+
+document.getElementById('btn-route-edit-close').addEventListener('click', () => {
+  document.getElementById('route-edit-overlay').classList.remove('show');
+});
+
+document.getElementById('btn-route-edit-save').addEventListener('click', async () => {
+  if(!currentPreset) return;
+  currentPreset.routeMode = 'custom';
+  currentPreset.customUnitOrder = routeEditWorkingOrder.slice();
+  await dbSavePreset(currentPreset);
+  SEQUENCE = buildSequenceFromPreset(currentPreset);
+  renderCurrent();
+  renderLog();
+  updateRouteOrderUi();
+  document.getElementById('route-edit-overlay').classList.remove('show');
 });
 
 // btnSwitchSite("현장 변경")와 홈 네비 탭이 공유하는 "홈으로 돌아가기" 로직.
