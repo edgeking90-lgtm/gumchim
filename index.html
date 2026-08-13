@@ -1415,6 +1415,7 @@ function renderCurrent(){
   ocrToken++;
   clearTimeout(ocrDebounceTimer);
   ocrStaged = null;
+  pendingRepeatAmbiguity = false; // 이전 항목에서 남은 반복횟수 불확실 상태가 새 항목으로 새는 것 방지
   if(idx >= SEQUENCE.length){
     activeScreen.style.display = 'none';
     doneScreen.style.display = 'flex';
@@ -1492,7 +1493,8 @@ const REVIEW_REASON_LABELS = {
   'ocr_mismatch': 'OCR 불일치',
   'negative_usage': '사용량 마이너스',
   'usage_over_1.5x': '평균 대비 1.5배 초과',
-  'usage_over_2x': '평균 대비 2배 초과'
+  'usage_over_2x': '평균 대비 2배 초과',
+  'repeat_count_ambiguous': '반복 횟수 불확실'
 };
 function reviewReasonsText(reasons){
   if(!reasons || reasons.length === 0) return '';
@@ -1778,6 +1780,7 @@ async function confirmCurrent(){
         else if(usageForReview > histForReview.averageUsage * 1.5) reviewReasons.push('usage_over_1.5x');
       }
     }
+    if(pendingRepeatAmbiguity) reviewReasons.push('repeat_count_ambiguous');
     const entry = {
       key: entryKeyStr,
       presetId: currentPreset.id,
@@ -1814,6 +1817,7 @@ async function confirmCurrent(){
 
 function clearStaged(){
   staged = '';
+  pendingRepeatAmbiguity = false; // 다시 말하기(재시도)인데 예전 애매함 상태가 남아있는 것 방지
   renderStaged();
 }
 
@@ -1960,6 +1964,49 @@ function pickBestDigitCandidate(candidates){
   return candidates[0] || '';
 }
 
+// ---------------------------------------------------------------------
+// 반복 숫자 개수 불확실 감지 — "몇 번 반복했는지"만 불확실한 아주 좁은 패턴만 잡는다.
+// 절대 "가장 긴 후보"를 임의로 고르지 않는다 — 그건 오히려 틀릴 수 있다는 게
+// 실제 로그로 확인됐다(1111인데 후보에 11111/111111까지 있었음). 대신:
+//   1) 이전 지침의 자릿수와 정확히 일치하는 후보가 "하나뿐"일 때만 그걸로 확정한다.
+//   2) 그렇게 확정 못 하면 절대 추측하지 않고, 1순위 후보를 그대로 쓰되
+//      needsReview 사유(repeat_count_ambiguous)로 남겨서 나중에 사람이 확인하게 한다.
+// ---------------------------------------------------------------------
+function isPureRepeatDigits(digits){
+  return /^(\d)\1*$/.test(digits);
+}
+
+function detectRepeatCountAmbiguity(candidateTexts){
+  const digitsList = candidateTexts.map(t => extractDigits(t)).filter(d => d && d.length > 0);
+  const repeats = digitsList.filter(isPureRepeatDigits);
+  if(repeats.length < 2) return null;
+  const digitChar = repeats[0][0];
+  if(!repeats.every(r => r[0] === digitChar)) return null; // 반복되는 숫자 자체가 다르면 이 패턴이 아님
+  const uniqueLengths = Array.from(new Set(repeats.map(r => r.length)));
+  if(uniqueLengths.length < 2) return null; // 길이가 다 같으면 애매함 없음
+  return { digit: digitChar, matchingDigitStrings: Array.from(new Set(repeats)) };
+}
+
+function expectedDigitLengthForCurrentUnit(){
+  const hist = getCurrentUnitHistory();
+  if(!hist || typeof hist.previousReading !== 'number') return null;
+  // 계량기는 누적값이라 한 달 사이에 자릿수가 바뀌는 일은 사실상 없다(교체 등 예외 제외).
+  // 그래서 "이전 지침과 자릿수가 같을 것"은 추측이 아니라 데이터 근거가 있는 기대치다.
+  return String(Math.trunc(hist.previousReading)).length;
+}
+
+// 애매하면 절대 추측하지 않는다: 예상 자릿수와 정확히 일치하는 후보가 "하나뿐"일 때만 그걸 쓴다.
+function resolveRepeatCountAmbiguity(ambiguity){
+  const expectedLen = expectedDigitLengthForCurrentUnit();
+  if(!expectedLen) return null;
+  const matches = ambiguity.matchingDigitStrings.filter(d => d.length === expectedLen);
+  return matches.length === 1 ? matches[0] : null;
+}
+
+// 이번 확정에 반복횟수 불확실이 남아있었는지 — confirmCurrent()가 읽어서 needsReview
+// 사유에 반영한 뒤 다음 항목으로 넘어가면서 초기화한다.
+let pendingRepeatAmbiguity = false;
+
 // =====================================================================
 // 5. 음성 입력 — 웹(Web Speech API)과 안드로이드 네이티브(Capacitor 플러그인) 어댑터.
 //
@@ -2014,8 +2061,23 @@ function setupWebRecognition(){
       for(let j=0; j<event.results[i].length; j++){
         alternatives.push(event.results[i][j].transcript);
       }
-      const best = pickBestDigitCandidate(alternatives);
+      let best = pickBestDigitCandidate(alternatives);
       if(event.results[i].isFinal){
+        const ambiguity = detectRepeatCountAmbiguity(alternatives);
+        if(ambiguity){
+          const resolved = resolveRepeatCountAmbiguity(ambiguity);
+          if(resolved !== null){
+            const matchedText = alternatives.find(c => extractDigits(c) === resolved);
+            if(matchedText){ best = matchedText; }
+            pendingRepeatAmbiguity = false;
+            diagLog('VOICE', 'repeat-count ambiguity resolved by expected length -> "' + resolved + '"');
+          } else {
+            pendingRepeatAmbiguity = true;
+            diagLog('VOICE', 'repeat-count ambiguity NOT resolved -> keeping 1st candidate, flagged for review');
+          }
+        } else {
+          pendingRepeatAmbiguity = false;
+        }
         // [DIAGNOSTIC] 안드로이드 경로와 동일한 3단계 비교 로그.
         diagLog('VOICE', 'candidates=' + JSON.stringify(alternatives));
         diagLog('VOICE', 'picked="' + best + '"');
@@ -2134,7 +2196,22 @@ async function runAndroidListenLoop(){
         maxResults: 5 // 후보를 여러 개 받아서 그중 숫자로 가장 잘 풀리는 걸 고른다
       });
       const candidates = (result && result.matches) || [];
-      const text = pickBestDigitCandidate(candidates);
+      let text = pickBestDigitCandidate(candidates);
+      const ambiguity = detectRepeatCountAmbiguity(candidates);
+      if(ambiguity){
+        const resolved = resolveRepeatCountAmbiguity(ambiguity);
+        if(resolved !== null){
+          const matchedText = candidates.find(c => extractDigits(c) === resolved);
+          if(matchedText){ text = matchedText; }
+          pendingRepeatAmbiguity = false;
+          diagLog('VOICE', 'repeat-count ambiguity resolved by expected length -> "' + resolved + '"');
+        } else {
+          pendingRepeatAmbiguity = true;
+          diagLog('VOICE', 'repeat-count ambiguity NOT resolved -> keeping 1st candidate, flagged for review');
+        }
+      } else {
+        pendingRepeatAmbiguity = false;
+      }
       // [DIAGNOSTIC] 반복 숫자 누락 원인 조사용 3단계 비교 로그.
       // 1) 엔진이 준 후보 원문 전부 2) 그중 우리가 고른 것 3) 그걸 파싱한 최종 숫자.
       // 이 세 줄을 나란히 보면 반복 횟수가 어느 단계에서 줄어드는지 바로 보인다.
@@ -2198,7 +2275,15 @@ function handleUtterance(text){
     transcriptEl.textContent = '숫자를 한 자리씩 말해주세요 (예: 일 이 삼 팔)';
     return;
   }
-  if(digits){ staged = digits; renderStaged(); }
+  if(digits){
+    staged = digits;
+    renderStaged();
+    // 확정 전에 바로 눈치채고 고칠 수 있도록, 이미 보고 있는 transcript 자리에 그대로 알려준다
+    // (새 UI를 안 만들고 기존 자리를 재사용 — 사용자 입력 부담을 늘리지 않기 위함).
+    if(pendingRepeatAmbiguity){
+      transcriptEl.textContent = text + ' — 반복 횟수를 확인해주세요';
+    }
+  }
 }
 
 // 숫자 키패드 — 오버레이 모달로 열고 닫는다 (화면 높이에 영향 없음)
