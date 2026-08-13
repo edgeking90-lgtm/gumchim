@@ -2015,7 +2015,15 @@ function setupWebRecognition(){
         alternatives.push(event.results[i][j].transcript);
       }
       const best = pickBestDigitCandidate(alternatives);
-      if(event.results[i].isFinal) finalText += best; else interimText += best;
+      if(event.results[i].isFinal){
+        // [DIAGNOSTIC] 안드로이드 경로와 동일한 3단계 비교 로그.
+        diagLog('VOICE', 'candidates=' + JSON.stringify(alternatives));
+        diagLog('VOICE', 'picked="' + best + '"');
+        diagLog('VOICE', 'parsed digits="' + extractDigits(best) + '"');
+        finalText += best;
+      } else {
+        interimText += best;
+      }
     }
     if(interimText) transcriptEl.textContent = interimText;
     if(finalText){
@@ -2127,6 +2135,12 @@ async function runAndroidListenLoop(){
       });
       const candidates = (result && result.matches) || [];
       const text = pickBestDigitCandidate(candidates);
+      // [DIAGNOSTIC] 반복 숫자 누락 원인 조사용 3단계 비교 로그.
+      // 1) 엔진이 준 후보 원문 전부 2) 그중 우리가 고른 것 3) 그걸 파싱한 최종 숫자.
+      // 이 세 줄을 나란히 보면 반복 횟수가 어느 단계에서 줄어드는지 바로 보인다.
+      diagLog('VOICE', 'candidates=' + JSON.stringify(candidates));
+      diagLog('VOICE', 'picked="' + text + '"');
+      diagLog('VOICE', 'parsed digits="' + extractDigits(text) + '"');
       if(text){
         transcriptEl.textContent = text;
         handleUtterance(text.trim());
