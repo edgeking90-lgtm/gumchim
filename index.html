@@ -202,6 +202,9 @@
   .usage-item{ text-align:center; flex:1; }
   .usage-label{ display:block; font-size:10px; color:var(--muted); margin-bottom:1px; }
   .usage-value{ display:block; font-size:15px; font-weight:700; color:var(--paper); font-variant-numeric:tabular-nums; }
+  .usage-value.warn-negative{ color:var(--danger); }
+  .usage-value.warn-caution{ color:var(--warm); }
+  .usage-value.warn-alert{ color:var(--danger); }
   .usage-empty{
     font-size:11px; color:var(--muted); text-align:center;
     padding:4px 2px; flex:0 0 auto;
@@ -761,7 +764,7 @@
         </div>
         <div class="usage-arrow-down">↓</div>
         <div class="usage-hist-line current">
-          <span class="usage-label">이번 검침</span>
+          <span class="usage-label" id="usage-current-label">이번 검침</span>
           <span class="usage-value current" id="usage-current-reading">-</span>
         </div>
       </div>
@@ -1353,6 +1356,7 @@ const usageRow = document.getElementById('usage-row');
 const usageEmpty = document.getElementById('usage-empty');
 const usagePrevEl = document.getElementById('usage-prev');
 const usageCurrentReadingEl = document.getElementById('usage-current-reading');
+const usageCurrentLabelEl = document.getElementById('usage-current-label');
 const usageNowEl = document.getElementById('usage-now');
 const usageAvgEl = document.getElementById('usage-avg');
 const usageDiffEl = document.getElementById('usage-diff');
@@ -1503,6 +1507,11 @@ function renderUsageStats(){
   // "이번 검침" — 지난달 검침 바로 아래에 세로로 보여줄 현재 원본 지침값(사용량이 아님).
   usageCurrentReadingEl.textContent = (stagedNum !== null && !isNaN(stagedNum)) ? formatNum(stagedNum) : '-';
 
+  // 라벨 자체도 몇 월 검침인지 알 수 있으면 그걸로 바꾼다(엑셀 자동감지가 세로형
+  // 파일에서 다음 달 컬럼을 찾아준 경우만 — 모르면 기존처럼 "이번 검침" 그대로).
+  const targetMonth = getCurrentUnitTargetMonth();
+  usageCurrentLabelEl.textContent = targetMonth ? (targetMonth + '월 검침') : '이번 검침';
+
   const hasUsage = (stagedNum !== null && !isNaN(stagedNum) && typeof prev === 'number');
   const usage = hasUsage ? (stagedNum - prev) : null;
   usageNowEl.textContent = (usage !== null) ? formatNum(usage) : '-';
@@ -1510,12 +1519,43 @@ function renderUsageStats(){
   const avg = hist.averageUsage;
   usageAvgEl.textContent = formatNum(avg);
 
+  // 여기서부터는 순수 시각 표시다 — 팝업/경고창은 안 띄운다. 판단은 여전히 사람이 한다.
+  // 1) 계량기는 누적값이라 사용량이 마이너스면 명백히 잘못된 값(오타/다른 계량기 등)이다.
+  // 2) 평균 대비 배수는 사용자가 실제 사무실 파일(202동)에서 직접 확인해서 요청한
+  //    기준(6개월 평균의 1.5배=주의, 2배=확인 필요)을 그대로 가져다 썼다 — 우리가
+  //    새로 발명한 임계값이 아니다.
+  usageNowEl.classList.remove('warn-negative', 'warn-caution', 'warn-alert');
+  usageDiffEl.classList.remove('warn-caution', 'warn-alert');
+
+  if(usage !== null && usage < 0){
+    usageNowEl.classList.add('warn-negative');
+  } else if(usage !== null && typeof avg === 'number' && avg > 0){
+    if(usage > avg * 2){
+      usageNowEl.classList.add('warn-alert');
+      usageDiffEl.classList.add('warn-alert');
+    } else if(usage > avg * 1.5){
+      usageNowEl.classList.add('warn-caution');
+      usageDiffEl.classList.add('warn-caution');
+    }
+  }
+
   if(usage !== null && typeof avg === 'number'){
     const diff = usage - avg;
     usageDiffEl.textContent = (diff > 0 ? '+' : '') + formatNum(diff);
   } else {
     usageDiffEl.textContent = '-';
   }
+}
+
+// 세로형(월별 컬럼) 엑셀에서 자동감지가 "이 세대_종류의 다음 검침 대상이 몇 월인지"를
+// 같이 뽑아둔 경우에만 값이 있다(OutputMapping.cellMonth). 가로형 파일이거나
+// 매핑이 아직 없으면 null — 이때는 기존 그대로 "이번 검침"이라는 일반 표현을 쓴다.
+function getCurrentUnitTargetMonth(){
+  if(!currentItem || currentOutputMappings.length === 0) return null;
+  const mapping = currentOutputMappings[0];
+  if(!mapping.cellMonth) return null;
+  const key = currentItem.ho + '_' + currentItem.type;
+  return mapping.cellMonth[key] || null;
 }
 
 // 상단의 얇은 진행바 — "전체 중 어디쯤인가"를 가장 단순한 형태로만 보여준다.
@@ -2299,6 +2339,7 @@ function renderExcelImportReview(result){
       '검침 종류: <b style="color:var(--teal);">' + result.preset.meterTypes.join(' · ') + '</b> (' + result.preset.meterTypes.length + '종)<br>' +
       '세대 수: <b style="color:var(--paper);">' + result.preset.units.length + '</b>세대<br>' +
       '다음 검침값 위치: <b style="color:var(--paper);">' + Object.keys(result.mapping.cellMap).length + '</b>곳 확인됨' +
+      (result.mapping.cellMonth ? ('<br>다음 검침월: <b style="color:var(--teal);">' + (Object.values(result.mapping.cellMonth)[0] || '?') + '월</b> (세대별로 다를 수 있음)') : '') +
       (result.skipped > 0 ? ('<br><span style="color:var(--warm);">건너뜀: ' + result.skipped + '건</span>') : '') +
     '</div>' +
     '<div style="border-top:1px solid var(--line); padding-top:8px; margin-bottom:14px;">' +
@@ -2355,6 +2396,7 @@ async function confirmExcelImport(){
       layout: 'wide',
       sheet: result.mapping.sheet,
       cellMap: result.mapping.cellMap,
+      cellMonth: result.mapping.cellMonth || null,
       createdAt: new Date().toISOString()
     };
     await dbSaveOutputMapping(mapping);
@@ -2626,6 +2668,7 @@ async function selectPreset(preset){
   topbarEl.style.display = 'flex';
   topProgressBar.style.display = 'block';
 
+  await refreshOutputMappingStatus(); // "이번 검침" 라벨이 몇 월인지 알려면 매핑을 미리 알아야 한다
   renderLog();
   renderCurrent();
   updateRouteOrderUi();
