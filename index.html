@@ -1987,21 +1987,11 @@ function detectRepeatCountAmbiguity(candidateTexts){
   return { digit: digitChar, matchingDigitStrings: Array.from(new Set(repeats)) };
 }
 
-function expectedDigitLengthForCurrentUnit(){
-  const hist = getCurrentUnitHistory();
-  if(!hist || typeof hist.previousReading !== 'number') return null;
-  // 계량기는 누적값이라 한 달 사이에 자릿수가 바뀌는 일은 사실상 없다(교체 등 예외 제외).
-  // 그래서 "이전 지침과 자릿수가 같을 것"은 추측이 아니라 데이터 근거가 있는 기대치다.
-  return String(Math.trunc(hist.previousReading)).length;
-}
-
-// 애매하면 절대 추측하지 않는다: 예상 자릿수와 정확히 일치하는 후보가 "하나뿐"일 때만 그걸 쓴다.
-function resolveRepeatCountAmbiguity(ambiguity){
-  const expectedLen = expectedDigitLengthForCurrentUnit();
-  if(!expectedLen) return null;
-  const matches = ambiguity.matchingDigitStrings.filter(d => d.length === expectedLen);
-  return matches.length === 1 ? matches[0] : null;
-}
+// 주의: "이전 지침과 자릿수가 같을 것"을 기준으로 자동 확정하던 로직이 있었는데 제거했다.
+// 999 -> 1000처럼 자릿수가 정상적으로 늘어나는 경우를 오히려 틀리게 만드는 결함이었다
+// (예: 지난달 553인데 "1111"이라고 4번 말해도 자릿수가 3이라며 "111"로 잘못 확정해버림).
+// 반복 횟수가 애매하면 이제 절대 추측하지 않는다 — 엔진 1순위 후보를 그대로 쓰고
+// repeat_count_ambiguous로만 표시해서 사람이 직접 확인하게 한다.
 
 // 이번 확정에 반복횟수 불확실이 남아있었는지 — confirmCurrent()가 읽어서 needsReview
 // 사유에 반영한 뒤 다음 항목으로 넘어가면서 초기화한다.
@@ -2061,22 +2051,12 @@ function setupWebRecognition(){
       for(let j=0; j<event.results[i].length; j++){
         alternatives.push(event.results[i][j].transcript);
       }
-      let best = pickBestDigitCandidate(alternatives);
+      const best = pickBestDigitCandidate(alternatives);
       if(event.results[i].isFinal){
         const ambiguity = detectRepeatCountAmbiguity(alternatives);
+        pendingRepeatAmbiguity = !!ambiguity;
         if(ambiguity){
-          const resolved = resolveRepeatCountAmbiguity(ambiguity);
-          if(resolved !== null){
-            const matchedText = alternatives.find(c => extractDigits(c) === resolved);
-            if(matchedText){ best = matchedText; }
-            pendingRepeatAmbiguity = false;
-            diagLog('VOICE', 'repeat-count ambiguity resolved by expected length -> "' + resolved + '"');
-          } else {
-            pendingRepeatAmbiguity = true;
-            diagLog('VOICE', 'repeat-count ambiguity NOT resolved -> keeping 1st candidate, flagged for review');
-          }
-        } else {
-          pendingRepeatAmbiguity = false;
+          diagLog('VOICE', 'repeat-count ambiguity detected -> keeping 1st candidate as-is, flagged for review');
         }
         // [DIAGNOSTIC] 안드로이드 경로와 동일한 3단계 비교 로그.
         diagLog('VOICE', 'candidates=' + JSON.stringify(alternatives));
@@ -2196,21 +2176,11 @@ async function runAndroidListenLoop(){
         maxResults: 5 // 후보를 여러 개 받아서 그중 숫자로 가장 잘 풀리는 걸 고른다
       });
       const candidates = (result && result.matches) || [];
-      let text = pickBestDigitCandidate(candidates);
+      const text = pickBestDigitCandidate(candidates);
       const ambiguity = detectRepeatCountAmbiguity(candidates);
+      pendingRepeatAmbiguity = !!ambiguity;
       if(ambiguity){
-        const resolved = resolveRepeatCountAmbiguity(ambiguity);
-        if(resolved !== null){
-          const matchedText = candidates.find(c => extractDigits(c) === resolved);
-          if(matchedText){ text = matchedText; }
-          pendingRepeatAmbiguity = false;
-          diagLog('VOICE', 'repeat-count ambiguity resolved by expected length -> "' + resolved + '"');
-        } else {
-          pendingRepeatAmbiguity = true;
-          diagLog('VOICE', 'repeat-count ambiguity NOT resolved -> keeping 1st candidate, flagged for review');
-        }
-      } else {
-        pendingRepeatAmbiguity = false;
+        diagLog('VOICE', 'repeat-count ambiguity detected -> keeping 1st candidate as-is, flagged for review');
       }
       // [DIAGNOSTIC] 반복 숫자 누락 원인 조사용 3단계 비교 로그.
       // 1) 엔진이 준 후보 원문 전부 2) 그중 우리가 고른 것 3) 그걸 파싱한 최종 숫자.
