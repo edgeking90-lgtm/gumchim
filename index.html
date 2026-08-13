@@ -828,6 +828,11 @@
   </div>
 
   <div class="office-section">
+    <div class="office-section-title">현장 동선</div>
+    <button class="btn-copy-office" id="btn-toggle-route-order" style="width:100%;">동선: 높은 층부터</button>
+  </div>
+
+  <div class="office-section">
     <div class="office-section-title">사무실 붙여넣기</div>
     <div class="office-mapping-status" id="office-mapping-status">불러온 출력 양식 없음</div>
     <div class="btn-row-office">
@@ -1254,10 +1259,27 @@ function dbGetOriginalFile(outputMappingId){
 //    규칙(회귀 테스트로 검증됨): preset.units 순서를 그대로 따라가며,
 //    각 호수 안에서는 preset.meterTypes 순서대로 펼친다 (unit-major, type-minor).
 //    이 규칙으로 만든 202동 시퀀스는 예전 하드코딩 buildSequence()와 완전히 동일하다.
+//
+//    floorOrder/unitOrderWithinFloor는 원래 Preset에 저장만 되고 실제로는 안 읽히고
+//    있었다(진짜 순서는 그냥 units 배열 순서 그대로였음) — 이제 이 필드를 실제로 읽어서
+//    정렬한다. 위치(층/호)를 모르는 세대가 하나라도 있으면 그 세대는 원래 있던
+//    상대 순서 그대로 둔다(stable sort) — 안전한 기본값이다.
 // =====================================================================
+function sortedUnitsForPreset(preset){
+  const floorDir = preset.floorOrder === 'asc' ? 1 : -1; // 기본값 desc(높은 층부터)
+  const unitDir = preset.unitOrderWithinFloor === 'asc' ? 1 : -1;
+  return preset.units.slice().sort((a, b) => {
+    const sa = getUnitSpatialInfo(a);
+    const sb = getUnitSpatialInfo(b);
+    if(!sa || !sb) return 0;
+    if(sa.floor !== sb.floor) return (sa.floor - sb.floor) * floorDir;
+    return (sa.unitNo - sb.unitNo) * unitDir;
+  });
+}
+
 function buildSequenceFromPreset(preset){
   const seq = [];
-  preset.units.forEach(u => {
+  sortedUnitsForPreset(preset).forEach(u => {
     preset.meterTypes.forEach(t => seq.push({ ho: u.ho, type: t }));
   });
   return seq;
@@ -2560,12 +2582,36 @@ async function selectPreset(preset){
 
   renderLog();
   renderCurrent();
+  updateRouteToggleLabel();
 
   // 권한 게이트를 건너뛴 경우 startCamera()가 아직 한 번도 호출 안 됐을 수 있다.
   // 그 상태로 두면 "카메라 준비 중…" 문구가 영원히 안 바뀌므로, 현장에 들어올 때
   // 한 번은 시도해본다. 실패해도(거부/미지원) 검침 자체엔 전혀 영향 없다.
   if(!camStream){ startCamera(); } else { diagLog('CAMERA', 'existing stream (skip start)'); } // [DIAGNOSTIC BUILD]
 }
+
+// 현장 동선(층/호수 오름차순↔내림차순) 토글 — 층/호수 정렬 방향만 뒤집는다.
+// 이미 확정된 entries는 전혀 안 건드린다(entries는 순서 개념이 없는 key-value라
+// 안전함) — SEQUENCE만 새로 만들고 renderCurrent()가 findNextIdx()로 알아서
+// 기존 진행상황 기준 올바른 위치를 다시 잡아준다. 바꾼 방향은 Preset에 저장돼서
+// 다음에 같은 현장에 들어와도 유지된다(dbSavePreset은 기존 함수 그대로 재사용).
+function updateRouteToggleLabel(){
+  if(!currentPreset || !btnToggleRouteOrder) return;
+  const isDesc = currentPreset.floorOrder !== 'asc';
+  btnToggleRouteOrder.textContent = isDesc ? '동선: 높은 층부터' : '동선: 낮은 층부터';
+}
+const btnToggleRouteOrder = document.getElementById('btn-toggle-route-order');
+btnToggleRouteOrder.addEventListener('click', async () => {
+  if(!currentPreset) return;
+  const newOrder = currentPreset.floorOrder === 'asc' ? 'desc' : 'asc';
+  currentPreset.floorOrder = newOrder;
+  currentPreset.unitOrderWithinFloor = newOrder;
+  await dbSavePreset(currentPreset);
+  SEQUENCE = buildSequenceFromPreset(currentPreset);
+  renderCurrent();
+  renderLog();
+  updateRouteToggleLabel();
+});
 
 // btnSwitchSite("현장 변경")와 홈 네비 탭이 공유하는 "홈으로 돌아가기" 로직.
 // Preset 전환은 다른 Preset의 entries를 절대 건드리지 않는다 — confirmCurrent()가
