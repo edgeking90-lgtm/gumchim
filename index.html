@@ -496,34 +496,43 @@
      이 변수들이 새어나가지 않는다(#home-screen 자식 요소들만 참조).
      ===================================================================== */
   #home-screen{
-    --hbg:#f5f7fa;
-    --hcard:#ffffff;
-    --hink:#0f1f3d;
-    --hblue:#2563eb;
-    --hblue-soft:#eaf1ff;
-    --hmuted:#6b7690;
-    --hline:#e6e9f0;
-    --hgood:#1f9d55;
-    --hgood-soft:#e7f7ed;
-    --hwarn-soft:#fff4e5;
+    --hbg:var(--ink);
+    --hcard:var(--panel);
+    --hink:var(--paper);
+    --hblue:var(--teal);
+    --hblue-soft:rgba(79,209,197,0.14);
+    --hmuted:var(--muted);
+    --hline:var(--line);
+    --hgood:var(--good);
+    --hgood-soft:rgba(95,217,122,0.14);
+    --hwarn-soft:rgba(255,179,0,0.14);
     background:var(--hbg);
     color:var(--hink);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
     display:flex; flex-direction:column; gap:18px;
     padding:2px 2px 8px;
   }
-  .home-brand{ display:flex; align-items:center; justify-content:space-between; }
-  .home-brand-left{ display:flex; align-items:center; gap:10px; }
-  .home-brand-mark{
-    width:34px; height:34px; border-radius:9px; background:var(--hblue);
-    flex-shrink:0;
-  }
-  .home-brand-text .hb-title{ font-size:19px; font-weight:800; letter-spacing:0.02em; color:var(--hink); line-height:1.15; }
-  .home-brand-text .hb-sub{ font-size:12px; font-weight:600; color:var(--hblue); margin-top:1px; }
+  /* 상단 — 브랜드+날짜 한 줄로 최소화. 큰 헤드라인/설명문은 더는 안 쓴다. */
+  .home-topline{ display:flex; align-items:center; justify-content:space-between; }
+  .home-brand-mini{ font-size:15px; font-weight:800; letter-spacing:0.02em; color:var(--hink); }
+  .home-date-mini{ font-size:12px; color:var(--hmuted); font-weight:600; }
 
-  .home-clock{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--hmuted); font-weight:600; }
-  .home-headline{ font-size:23px; font-weight:800; color:var(--hink); line-height:1.3; margin-top:2px; }
-  .home-subtext{ font-size:13px; color:var(--hmuted); margin-top:2px; }
+  .home-section-title-small{ font-size:12px; font-weight:700; color:var(--hmuted); margin-bottom:6px; }
+
+  /* 오늘의 현장 — 화면의 주인공. 최근 작업 카드 스타일을 그대로 재사용한다(새로 안 만듦) */
+  .psc-next{ font-size:13px; color:var(--hink); font-weight:700; margin-top:2px; }
+  .btn-continue-primary{
+    width:100%; margin-top:12px; background:var(--hblue); color:#04211d;
+    border:none; border-radius:11px; font-size:16px; font-weight:800; padding:14px 0;
+  }
+  .btn-continue-primary:disabled{ opacity:0.45; }
+
+  /* 새 현장/엑셀 가져오기 — 이제 나란히, 작게 */
+  .home-secondary-actions{ display:flex; gap:8px; }
+  .home-secondary-actions .btn-new-site-compact{
+    flex:1; border:1px dashed var(--hline); border-radius:10px; background:transparent;
+    color:var(--hblue); font-size:12px; font-weight:700; padding:11px 4px; text-align:center;
+  }
 
   .home-section-title{ display:flex; align-items:center; justify-content:space-between; font-size:14px; font-weight:800; color:var(--hink); }
 
@@ -540,7 +549,7 @@
   .home-status-badge{
     font-size:11px; font-weight:800; padding:4px 9px; border-radius:999px; white-space:nowrap;
   }
-  .home-status-badge.pending{ background:#f1f2f6; color:var(--hmuted); }
+  .home-status-badge.pending{ background:var(--panel-2); color:var(--hmuted); }
   .home-status-badge.progress{ background:var(--hblue-soft); color:var(--hblue); }
   .home-status-badge.done{ background:var(--hgood-soft); color:var(--hgood); }
 
@@ -552,7 +561,7 @@
   .recent-stat.total b{ color:var(--hink); }
   .recent-stat span{ display:block; font-size:11px; color:var(--hmuted); margin-top:1px; }
   .recent-pct{ font-size:19px; font-weight:800; color:var(--hink); margin-left:auto; }
-  .home-progress-track{ height:6px; background:#eef0f5; border-radius:99px; overflow:hidden; }
+  .home-progress-track{ height:6px; background:var(--panel-2); border-radius:99px; overflow:hidden; }
   .home-progress-fill{ height:100%; background:var(--hblue); border-radius:99px; }
   .btn-continue{
     background:var(--hblue); color:#fff; border:none; border-radius:11px;
@@ -574,7 +583,7 @@
   .hli-pct-row{ display:flex; align-items:center; gap:8px; font-size:12px; color:var(--hmuted); font-variant-numeric:tabular-nums; }
   .hli-pct-row b{ color:var(--hink); font-size:13px; }
   .hli-chev{ color:var(--hmuted); font-size:16px; margin-left:2px; }
-  .hli-progress-track{ width:96px; height:4px; background:#eef0f5; border-radius:99px; overflow:hidden; }
+  .hli-progress-track{ width:96px; height:4px; background:var(--panel-2); border-radius:99px; overflow:hidden; }
   .hli-progress-fill{ height:100%; background:var(--hblue); border-radius:99px; }
   .hli-progress-fill.done{ background:var(--hgood); }
 
@@ -687,42 +696,29 @@
   <div id="site-select-screen">
     <div id="home-screen">
 
-      <div class="home-brand">
-        <div class="home-brand-left">
-          <div class="home-brand-mark"></div>
-          <div class="home-brand-text">
-            <div class="hb-title">GUMCHIM</div>
-            <div class="hb-sub">현장 검침 관리</div>
-          </div>
+      <div class="home-topline">
+        <span class="home-brand-mini">GUMCHIM</span>
+        <span class="home-date-mini" id="home-clock"></span>
+      </div>
+
+      <div>
+        <div class="home-section-title-small">오늘의 현장</div>
+        <div class="recent-card" id="primary-site-card" style="display:none;"></div>
+        <div class="home-empty-note" id="primary-site-empty" style="display:none; padding:22px 0;">
+          아직 진행 중인 현장이 없습니다. 아래에서 현장을 선택하거나 등록하세요.
         </div>
       </div>
 
-      <div>
-        <div class="home-clock" id="home-clock"></div>
-        <div class="home-headline">오늘의 현장을 선택하세요</div>
-        <div class="home-subtext">검침을 시작할 현장을 선택하거나, 새로운 현장을 등록하세요.</div>
-      </div>
-
-      <div id="recent-work-section" style="display:none;">
-        <div class="home-section-title" style="margin-bottom:8px;">최근 작업</div>
-        <div class="recent-card" id="recent-card"></div>
-      </div>
-
-      <div>
-        <div class="home-section-title" style="margin-bottom:8px;">현장 목록</div>
+      <div id="other-sites-section" style="display:none;">
+        <div class="home-section-title-small">다른 현장</div>
         <div class="home-list" id="preset-list"></div>
       </div>
 
-      <div>
-        <label class="btn-new-site" for="preset-import-input">＋ 새 현장 등록</label>
+      <div class="home-secondary-actions">
+        <label class="btn-new-site-compact" for="preset-import-input">＋ 새 현장</label>
         <input type="file" id="preset-import-input" accept=".json" style="display:none;">
-        <div class="home-empty-note" style="padding-top:8px;">JSON 현장 구조 파일을 선택하세요</div>
-      </div>
-
-      <div>
-        <label class="btn-new-site" for="excel-import-input" style="margin-top:2px;">엑셀로 현장 만들기</label>
+        <label class="btn-new-site-compact" for="excel-import-input">엑셀에서 가져오기</label>
         <input type="file" id="excel-import-input" accept=".xlsx,.xlsm" style="display:none;">
-        <div class="home-empty-note" style="padding-top:8px;">사무실에서 쓰던 검침 엑셀 파일을 그대로 선택하세요</div>
       </div>
 
     </div>
@@ -2692,12 +2688,10 @@ async function presetProgress(preset){
 }
 
 // 한국어 날짜/시간 포맷 — 초 단위는 표시하지 않는다. 하드코딩 없이 매번 실제 Date에서 만든다.
-function formatHomeClockText(date){
-  const y = date.getFullYear(), m = date.getMonth()+1, d = date.getDate();
-  const h = date.getHours(), min = date.getMinutes();
-  const ampm = h < 12 ? '오전' : '오후';
-  let h12 = h % 12; if(h12 === 0) h12 = 12;
-  return `${y}년 ${m}월 ${d}일 ${ampm} ${h12}시 ${min}분입니다.`;
+function formatHomeDateMini(date){
+  const days = ['일','월','화','수','목','금','토'];
+  const m = date.getMonth()+1, d = date.getDate();
+  return `${m}월 ${d}일 ${days[date.getDay()]}요일`;
 }
 function formatShortDateTime(date){
   const m = date.getMonth()+1, d = date.getDate();
@@ -2709,7 +2703,7 @@ function formatShortDateTime(date){
 }
 function updateHomeClock(){
   const el = document.getElementById('home-clock');
-  if(el) el.textContent = formatHomeClockText(new Date());
+  if(el) el.textContent = formatHomeDateMini(new Date());
 }
 updateHomeClock();
 setInterval(updateHomeClock, 30000); // 분 단위 표시라 30초 간격이면 충분히 정확하다
@@ -2720,18 +2714,38 @@ function homeStatusOf(done, total){
   return { key: 'progress', label: '진행 중' };
 }
 
-function renderRecentWorkCard(mostRecent){
-  const section = document.getElementById('recent-work-section');
-  const card = document.getElementById('recent-card');
+// 홈 화면에서 "다음 · N호"를 보여주기 위한 헬퍼. 지금 활성화된 화면의 findNextIdx()는
+// 전역 SEQUENCE/log에 의존해서 "현재 열어본 현장"에만 쓸 수 있는데, 홈 화면은
+// 아직 선택 안 한(어쩌면 다른) 현장의 다음 위치도 보여줘야 한다. 그래서 findNextIdx()와
+// 완전히 같은 규칙을, 전역 상태를 안 건드리고 임의의 preset+entries에 대해 계산한다.
+// buildSequenceFromPreset()/entryKey()는 기존 함수 그대로 재사용한다.
+function nextUnitLabelForPreset(preset, entries){
+  const seq = buildSequenceFromPreset(preset);
+  const done = new Set(entries.map(e => entryKey(e)));
+  for(const item of seq){
+    if(!done.has(entryKey(item))) return item.ho + '호';
+  }
+  return null; // 전부 완료
+}
+
+// "오늘의 현장" — 화면의 주인공. entries가 하나라도 있는 preset 중 가장 최근에
+// 확정된 것을 그대로 보여준다(이미 작업 중인 현장이니 "계속하기"가 자연스럽다).
+function renderPrimarySiteCard(mostRecent){
+  const card = document.getElementById('primary-site-card');
+  const empty = document.getElementById('primary-site-empty');
   if(!mostRecent){
-    section.style.display = 'none';
+    card.style.display = 'none';
     card.innerHTML = '';
+    empty.style.display = 'block';
     return;
   }
-  section.style.display = 'block';
-  const { preset, done, total, lastTime } = mostRecent;
+  empty.style.display = 'none';
+  card.style.display = 'block';
+  const { preset, done, total, entries } = mostRecent;
   const status = homeStatusOf(done, total);
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  const nextLabel = nextUnitLabelForPreset(preset, entries);
+
   card.innerHTML = `
     <div class="recent-top">
       <div style="display:flex; gap:12px; align-items:flex-start; min-width:0;">
@@ -2739,7 +2753,6 @@ function renderRecentWorkCard(mostRecent){
         <div class="recent-info">
           <div class="recent-name">${preset.name}</div>
           <div class="recent-meta">${preset.meterTypes.join(' · ')}</div>
-          <div class="recent-time">마지막 검침: ${formatShortDateTime(new Date(lastTime))}</div>
         </div>
       </div>
       <span class="home-status-badge ${status.key}">${status.label}</span>
@@ -2750,32 +2763,31 @@ function renderRecentWorkCard(mostRecent){
       <div class="recent-stat total"><b>${total}</b><span>전체 세대</span></div>
       <div class="recent-pct">${pct}%</div>
     </div>
-    <button class="btn-continue" id="btn-recent-continue" type="button">검침 계속하기 ›</button>
+    ${nextLabel ? `<div class="psc-next">다음 · ${nextLabel}</div>` : ''}
+    <button class="btn-continue-primary" id="btn-primary-continue" type="button" ${status.key==='done' ? 'disabled' : ''}>
+      ${status.key === 'done' ? '검침 완료됨' : '검침 계속하기 →'}
+    </button>
   `;
-  document.getElementById('btn-recent-continue').addEventListener('click', () => selectPreset(preset));
+  const btn = document.getElementById('btn-primary-continue');
+  if(status.key !== 'done'){
+    btn.addEventListener('click', () => selectPreset(preset));
+  }
 }
 
-async function renderPresetList(){
-  const presets = await dbGetAllPresets();
+// "다른 현장" — 자주 안 쓰는 보조 목록이라 작게. 지금 주인공 카드로 뜬 현장은
+// 여기서 다시 안 보여준다(같은 걸 두 번 보여주지 않기 위함).
+function renderOtherSitesList(infoList, primaryPresetId){
+  const section = document.getElementById('other-sites-section');
   presetListEl.innerHTML = '';
-
-  // "최근 작업" — entries가 하나라도 있는 preset 중 가장 최근에 확정된 것.
-  // 전부 미시작이면(entries 없는 preset뿐이면) 후보가 없어 카드 자체를 숨긴다.
-  let mostRecent = null;
-
-  for(const preset of presets){
-    const { done, total } = await presetProgress(preset); // 기존 함수 그대로 재사용
-    const entries = await dbGetEntriesForPreset(preset.id);
-    if(entries.length > 0){
-      const lastTime = entries.reduce((m, e) => (e.time > m ? e.time : m), entries[0].time);
-      if(!mostRecent || lastTime > mostRecent.lastTime){
-        mostRecent = { preset, done, total, lastTime };
-      }
-    }
-
+  const others = infoList.filter(info => info.preset.id !== primaryPresetId);
+  if(others.length === 0){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  others.forEach(({ preset, done, total }) => {
     const status = homeStatusOf(done, total);
     const pct = total > 0 ? Math.round(done / total * 100) : 0;
-
     const item = document.createElement('div');
     item.className = 'home-list-item';
     item.innerHTML = `
@@ -2795,9 +2807,28 @@ async function renderPresetList(){
     `;
     item.addEventListener('click', () => selectPreset(preset));
     presetListEl.appendChild(item);
+  });
+}
+
+async function renderPresetList(){
+  const presets = await dbGetAllPresets();
+  let mostRecent = null;
+  const infoList = [];
+
+  for(const preset of presets){
+    const { done, total } = await presetProgress(preset); // 기존 함수 그대로 재사용
+    const entries = await dbGetEntriesForPreset(preset.id); // 기존 함수 그대로 재사용
+    infoList.push({ preset, done, total, entries });
+    if(entries.length > 0){
+      const lastTime = entries.reduce((m, e) => (e.time > m ? e.time : m), entries[0].time);
+      if(!mostRecent || lastTime > mostRecent.lastTime){
+        mostRecent = { preset, done, total, entries, lastTime };
+      }
+    }
   }
 
-  renderRecentWorkCard(mostRecent);
+  renderPrimarySiteCard(mostRecent);
+  renderOtherSitesList(infoList, mostRecent ? mostRecent.preset.id : null);
 }
 
 async function selectPreset(preset){
