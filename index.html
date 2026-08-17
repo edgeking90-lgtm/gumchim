@@ -44,6 +44,23 @@
   }
 
   /* 최초 진입: 권한 게이트 */
+  /* 시작화면 — 짧게 보여주고 사라지는 순수 오버레이. 권한게이트/앱 로직은 전혀 안 건드린다. */
+  #splash-screen{
+    position:fixed; inset:0; z-index:999999;
+    background:#171310; /* 앱 전체의 --ink보다 약간 따뜻한 차콜 */
+    display:flex; align-items:center; justify-content:center;
+    transition:opacity 0.4s ease;
+  }
+  #splash-screen.hide{ opacity:0; pointer-events:none; }
+  .splash-content{ display:flex; flex-direction:column; align-items:center; }
+  .splash-logo{ margin-bottom:18px; }
+  .splash-wordmark{
+    font-size:26px; font-weight:800; letter-spacing:0.18em; color:var(--paper);
+  }
+  .splash-rule{ width:34px; height:2px; background:var(--teal); margin:12px 0 22px; border-radius:2px; }
+  .splash-sub{ font-size:15px; color:var(--paper); opacity:0.85; }
+  .splash-sub-accent{ font-size:15px; color:var(--teal); font-weight:700; margin-top:2px; }
+
   #permission-gate{
     position:fixed; inset:0; background:var(--ink);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -513,9 +530,13 @@
     padding:2px 2px 8px;
   }
   /* 상단 — 브랜드+날짜 한 줄로 최소화. 큰 헤드라인/설명문은 더는 안 쓴다. */
-  .home-topline{ display:flex; align-items:center; justify-content:space-between; }
-  .home-brand-mini{ font-size:15px; font-weight:800; letter-spacing:0.02em; color:var(--hink); }
-  .home-date-mini{ font-size:12px; color:var(--hmuted); font-weight:600; }
+  .home-topline{ display:flex; align-items:flex-start; justify-content:space-between; }
+  .home-brand-mini{ font-size:19px; font-weight:800; letter-spacing:0.03em; color:var(--hink); line-height:1.2; }
+  .home-brand-sub{ font-size:12px; color:var(--hmuted); margin-top:2px; }
+  .home-date-badge{
+    display:flex; align-items:center; gap:5px; font-size:12px; color:var(--hmuted); font-weight:600;
+    border:1px solid var(--hline); border-radius:8px; padding:6px 10px; flex-shrink:0; white-space:nowrap;
+  }
 
   .home-section-title-small{ font-size:12px; font-weight:700; color:var(--hmuted); margin-bottom:6px; }
 
@@ -543,7 +564,22 @@
   .recent-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
   .recent-badge-dot{ width:38px; height:38px; border-radius:10px; background:var(--hblue-soft); flex-shrink:0; }
   .recent-info{ flex:1; min-width:0; }
-  .recent-name{ font-size:16px; font-weight:800; color:var(--hink); }
+  .psc-dong{ font-size:34px; font-weight:800; color:var(--hink); line-height:1.1; letter-spacing:-0.01em; }
+  .psc-next-block{
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--hline);
+    display:flex; align-items:baseline; justify-content:space-between;
+  }
+  .psc-next-label{ font-size:12px; color:var(--hmuted); }
+  .psc-next-value{ font-size:22px; font-weight:800; color:var(--hink); }
+
+  #review-banner{
+    display:none; align-items:center; justify-content:space-between; gap:10px;
+    background:var(--hwarn-soft); border:1px solid rgba(255,179,0,0.3); border-radius:12px;
+    padding:12px 14px; cursor:pointer;
+  }
+  #review-banner .rb-title{ font-size:14px; font-weight:800; color:var(--warm); }
+  #review-banner .rb-sub{ font-size:11px; color:var(--hmuted); margin-top:1px; }
+  #review-banner .rb-chev{ color:var(--warm); font-size:18px; flex-shrink:0; }
   .recent-meta{ font-size:12px; color:var(--hmuted); margin-top:2px; }
   .recent-time{ font-size:11px; color:var(--hmuted); margin-top:4px; }
   .home-status-badge{
@@ -605,7 +641,7 @@
     background:none; border:none; color:#9aa3b8; font-size:11px; font-weight:700; padding:4px 0;
   }
   .nav-tab .nt-icon{ font-size:19px; line-height:1; }
-  .nav-tab.active{ color:#2563eb; }
+  .nav-tab.active{ color:var(--teal); }
   .preset-card{
     background:var(--panel); border:1px solid var(--line); border-radius:14px;
     padding:16px 18px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -635,6 +671,21 @@
 </style>
 </head>
 <body>
+
+<!-- 시작화면 — 순수 오버레이. 짧게 표시된 뒤 자동으로 사라지고, 그 아래(권한게이트/앱)는
+     원래 로직 그대로 손 안 대고 그대로 진행된다. -->
+<div id="splash-screen">
+  <div class="splash-content">
+    <svg class="splash-logo" width="72" height="72" viewBox="0 0 100 100">
+      <rect x="8" y="8" width="84" height="84" rx="20" fill="none" stroke="#EAE7DE" stroke-width="6"/>
+      <path d="M28 52 L44 68 L74 34" fill="none" stroke="#4FD1C5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="splash-wordmark">GUMCHIM</div>
+    <div class="splash-rule"></div>
+    <div class="splash-sub">동삼2지구</div>
+    <div class="splash-sub-accent">수도검침</div>
+  </div>
+</div>
 
 <!-- [DIAGNOSTIC BUILD] PC/USB 디버깅 없이 폰 화면만으로 로그를 볼 수 있게 하는 임시 패널.
      기본은 한 줄짜리 접힌 바 — 탭하면 펼쳐진다. 원인 확정 후 이 블록과
@@ -697,8 +748,14 @@
     <div id="home-screen">
 
       <div class="home-topline">
-        <span class="home-brand-mini">GUMCHIM</span>
-        <span class="home-date-mini" id="home-clock"></span>
+        <div>
+          <div class="home-brand-mini">GUMCHIM</div>
+          <div class="home-brand-sub">동삼2지구 수도검침</div>
+        </div>
+        <div class="home-date-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+          <span id="home-clock"></span>
+        </div>
       </div>
 
       <div>
@@ -707,18 +764,22 @@
         <div class="home-empty-note" id="primary-site-empty" style="display:none; padding:22px 0;">
           아직 진행 중인 현장이 없습니다. 아래에서 현장을 선택하거나 등록하세요.
         </div>
+        <div id="review-banner" style="margin-top:10px;"></div>
+      </div>
+
+      <div>
+        <div class="home-section-title-small">빠른 작업</div>
+        <div class="home-secondary-actions">
+          <label class="btn-new-site-compact" for="preset-import-input">＋ 새 현장</label>
+          <input type="file" id="preset-import-input" accept=".json" style="display:none;">
+          <label class="btn-new-site-compact" for="excel-import-input">엑셀에서 가져오기</label>
+          <input type="file" id="excel-import-input" accept=".xlsx,.xlsm" style="display:none;">
+        </div>
       </div>
 
       <div id="other-sites-section" style="display:none;">
         <div class="home-section-title-small">다른 현장</div>
         <div class="home-list" id="preset-list"></div>
-      </div>
-
-      <div class="home-secondary-actions">
-        <label class="btn-new-site-compact" for="preset-import-input">＋ 새 현장</label>
-        <input type="file" id="preset-import-input" accept=".json" style="display:none;">
-        <label class="btn-new-site-compact" for="excel-import-input">엑셀에서 가져오기</label>
-        <input type="file" id="excel-import-input" accept=".xlsx,.xlsm" style="display:none;">
       </div>
 
     </div>
@@ -2565,6 +2626,17 @@ document.getElementById('btn-excel-import-close').addEventListener('click', () =
 // =====================================================================
 // 7. 최초 진입 권한 게이트
 // =====================================================================
+// 시작화면 — 짧게 보여주고 자동으로 사라진다. 그 아래(권한 게이트든 홈이든)는
+// 원래 로직 그대로 진행되고 있었을 뿐이라, 여기선 순수하게 걷어내기만 한다.
+(function(){
+  const splash = document.getElementById('splash-screen');
+  if(!splash) return;
+  setTimeout(() => {
+    splash.classList.add('hide');
+    setTimeout(() => { splash.style.display = 'none'; }, 450);
+  }, 1200);
+})();
+
 const gate = document.getElementById('permission-gate');
 const micPermStatus = document.getElementById('mic-perm-status');
 const camPermStatus = document.getElementById('cam-perm-status');
@@ -2691,7 +2763,7 @@ async function presetProgress(preset){
 function formatHomeDateMini(date){
   const days = ['일','월','화','수','목','금','토'];
   const m = date.getMonth()+1, d = date.getDate();
-  return `${m}월 ${d}일 ${days[date.getDay()]}요일`;
+  return `${m}월 ${d}일 (${days[date.getDay()]})`;
 }
 function formatShortDateTime(date){
   const m = date.getMonth()+1, d = date.getDate();
@@ -2730,13 +2802,23 @@ function nextUnitLabelForPreset(preset, entries){
 
 // "오늘의 현장" — 화면의 주인공. entries가 하나라도 있는 preset 중 가장 최근에
 // 확정된 것을 그대로 보여준다(이미 작업 중인 현장이니 "계속하기"가 자연스럽다).
+function renderMeterTypesColored(types){
+  return types.map(t => {
+    const cls = meterTypeClass(t); // 기존 함수 그대로 재사용
+    const color = cls === 'cold' ? 'var(--teal)' : (cls === 'hot' ? 'var(--warm)' : 'var(--hink)');
+    return `<span style="color:${color};">${t}</span>`;
+  }).join(' <span style="color:var(--hmuted);">·</span> ');
+}
+
 function renderPrimarySiteCard(mostRecent){
   const card = document.getElementById('primary-site-card');
   const empty = document.getElementById('primary-site-empty');
+  const reviewBanner = document.getElementById('review-banner');
   if(!mostRecent){
     card.style.display = 'none';
     card.innerHTML = '';
     empty.style.display = 'block';
+    reviewBanner.style.display = 'none';
     return;
   }
   empty.style.display = 'none';
@@ -2745,29 +2827,47 @@ function renderPrimarySiteCard(mostRecent){
   const status = homeStatusOf(done, total);
   const pct = total > 0 ? Math.round(done / total * 100) : 0;
   const nextLabel = nextUnitLabelForPreset(preset, entries);
+  const dongLabel = preset.dong || preset.name; // dong이 없는 예외적인 경우에만 이름으로 대체
 
   card.innerHTML = `
     <div class="recent-top">
-      <div style="display:flex; gap:12px; align-items:flex-start; min-width:0;">
-        <div class="recent-badge-dot"></div>
-        <div class="recent-info">
-          <div class="recent-name">${preset.name}</div>
-          <div class="recent-meta">${preset.meterTypes.join(' · ')}</div>
-        </div>
+      <div class="recent-info">
+        <div class="psc-dong">${dongLabel}</div>
+        <div class="recent-meta">${renderMeterTypesColored(preset.meterTypes)}</div>
       </div>
       <span class="home-status-badge ${status.key}">${status.label}</span>
     </div>
-    <div class="home-progress-track"><div class="home-progress-fill" style="width:${pct}%;"></div></div>
-    <div class="recent-stats">
-      <div class="recent-stat"><b>${done}</b><span>완료 세대</span></div>
-      <div class="recent-stat total"><b>${total}</b><span>전체 세대</span></div>
+    <div class="recent-stats" style="margin-top:14px;">
+      <div class="recent-stat"><b>${done}</b><span>완료</span></div>
+      <div class="recent-stat total"><b>${total}</b><span>전체</span></div>
       <div class="recent-pct">${pct}%</div>
     </div>
-    ${nextLabel ? `<div class="psc-next">다음 · ${nextLabel}</div>` : ''}
+    <div class="home-progress-track"><div class="home-progress-fill" style="width:${pct}%;"></div></div>
+    ${nextLabel ? `
+      <div class="psc-next-block">
+        <div class="psc-next-label">다음 검침 세대</div>
+        <div class="psc-next-value">${nextLabel}</div>
+      </div>` : ''}
     <button class="btn-continue-primary" id="btn-primary-continue" type="button" ${status.key==='done' ? 'disabled' : ''}>
       ${status.key === 'done' ? '검침 완료됨' : '검침 계속하기 →'}
     </button>
   `;
+
+  // 미검침/의심 세대 — 기존 needsReview 필드를 그대로 센다(새 판정 로직 아님).
+  const reviewCount = entries.filter(e => e.needsReview).length;
+  if(reviewCount > 0){
+    reviewBanner.style.display = 'flex';
+    reviewBanner.innerHTML = `
+      <div class="rb-text">
+        <div class="rb-title">확인 필요 세대 ${reviewCount}건</div>
+        <div class="rb-sub">확인 후 검침 진행해주세요.</div>
+      </div>
+      <span class="rb-chev">›</span>
+    `;
+    reviewBanner.onclick = () => selectPreset(preset);
+  } else {
+    reviewBanner.style.display = 'none';
+  }
   const btn = document.getElementById('btn-primary-continue');
   if(status.key !== 'done'){
     btn.addEventListener('click', () => selectPreset(preset));
