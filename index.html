@@ -2005,8 +2005,8 @@ async function saveExportedFile(filename, bytes, mimeType, isText){
 
   const writeResult = await Filesystem.writeFile(
     isText
-      ? { path: filename, data: bytes, directory: 'CACHE', encoding: 'utf8' }
-      : { path: filename, data: arrayBufferToBase64(bytes), directory: 'CACHE' }
+      ? { path: filename, data: bytes, directory: 'CACHE', encoding: 'utf8', recursive: true }
+      : { path: filename, data: arrayBufferToBase64(bytes), directory: 'CACHE', recursive: true }
   );
   exportLog('save OK', { uri: writeResult.uri });
   exportLog('final URI/path', writeResult.uri);
