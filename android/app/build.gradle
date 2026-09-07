@@ -16,7 +16,23 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        debug {
+            // CI(GitHub Actions)는 매 실행마다 새 가상 환경을 쓰기 때문에, 이 파일을 고정해서
+            // 커밋해두지 않으면 빌드마다 랜덤한 디버그 서명이 생성된다. 그러면 안드로이드가
+            // 이전에 설치된 앱과 "다른 앱"으로 취급해 업데이트 설치를 거부하고(설치 안 됨),
+            // 강제로 넘어가려면 기존 앱을 삭제해야 해서 IndexedDB에 쌓인 검침 데이터가 날아간다.
+            // 그래서 debug.keystore를 레포에 고정 커밋하고 항상 이걸로만 서명한다.
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
