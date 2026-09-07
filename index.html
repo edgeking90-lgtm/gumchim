@@ -1827,10 +1827,16 @@ function renderLog(){
   logList.querySelectorAll('.li-del').forEach(b=>{
     b.addEventListener('click', async (e)=>{
       const key = e.target.getAttribute('data-key');
+      const item = log.find(x => x.key === key);
+      const label = item ? (item.ho + '호 ' + item.type) : '이 항목';
       await dbDelete(key);
       log = log.filter(x => x.key !== key);
       renderLog();
       renderCurrent();
+      // 삭제만 하면 기록 패널이 계속 떠 있어서 뒤에서 입력 화면이 그 항목으로
+      // 돌아가 있는 게 안 보인다 — 패널을 닫아서 바로 재입력 화면을 보여준다.
+      document.getElementById('records-panel').classList.remove('show');
+      alert(label + ' 삭제됨 — 다시 입력해주세요.');
     });
   });
   logList.querySelectorAll('.li-photo').forEach(b=>{
