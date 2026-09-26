@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test tests/pure.test.js tests/migration.test.js tests/period-flow.test.js"
+    "test": "node --test tests/pure.test.js tests/migration.test.js tests/period-flow.test.js tests/export-matrix.test.js"
   },
   "keywords": [],
   "author": "",

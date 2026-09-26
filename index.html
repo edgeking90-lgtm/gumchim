@@ -1071,6 +1071,7 @@
 </div>
 
 <script src="./gumchimDb.js"></script>
+<script src="./gumchimExportMatrix.js"></script>
 <script>
 // =====================================================================
 // [DIAGNOSTIC BUILD] 백그라운드/포그라운드 복귀 성능 원인 조사용 임시 계측.
@@ -1860,6 +1861,19 @@ function loadSheetJS(){
   return sheetJsLoadPromise;
 }
 
+// 한 세대 = 한 행, 검침항목(냉수/온수 등)은 각각 별도 열 — 사무실이 실제로 쓰는
+// 표 구조. "사무실 붙여넣기"(btnCopyOffice)가 이미 rowOrder=세대/columns=검침종류로
+// 같은 모양을 쓰고 있어서, 그 규칙을 CSV/엑셀 자체 내보내기에도 그대로 맞춘다.
+// 세대 순서는 새로 만들지 않고 기존 sortedUnitsForPreset()(현장 동선)을 그대로 쓴다.
+// 실제 표 생성 로직은 gumchimExportMatrix.js(순수 함수, Node로 테스트됨)에 있다 —
+// CSV/XLSX 두 버튼이 여기 하나만 거치므로 서로 다른 구조로 갈라질 수 없다.
+function buildWideExportRows(){
+  const dongLabel = currentPreset ? currentPreset.dong : '';
+  const meterTypes = currentPreset ? (currentPreset.meterTypes || []) : [];
+  const units = currentPreset ? sortedUnitsForPreset(currentPreset) : [];
+  return GumchimExportMatrix.buildWideExportMatrix(dongLabel, meterTypes, units, buildEntryLookup());
+}
+
 const btnExportXlsx = document.getElementById('btn-export-xlsx');
 btnExportXlsx.addEventListener('click', async ()=>{
   exportLog('button clicked', { type: 'xlsx' });
@@ -1870,11 +1884,10 @@ btnExportXlsx.addEventListener('click', async ()=>{
   btnExportXlsx.disabled = true;
   try{
     await loadSheetJS();
-    const dongLabel = currentPreset ? currentPreset.dong : '';
-    const rows = [['동','호수','종류','검침값','시각']];
-    log.forEach(item => rows.push([dongLabel, item.ho, item.type, item.value, item.time]));
+    const { header, rows: bodyRows } = buildWideExportRows();
+    const rows = [header].concat(bodyRows);
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:8},{wch:8},{wch:8},{wch:10},{wch:22}];
+    ws['!cols'] = header.map((_, i) => ({ wch: i < 2 ? 8 : 10 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '검침결과');
     exportLog('XLSX write start');
@@ -1900,11 +1913,9 @@ btnExport.addEventListener('click', async ()=>{
   exportLog('export type', 'csv');
   exportLog('records count', log.length);
   try{
-    const dongLabel = currentPreset ? currentPreset.dong : '';
-    let csv = '동,호수,종류,검침값,시각\n';
-    log.forEach(item=>{
-      csv += `${dongLabel},${item.ho},${item.type},${item.value},${item.time}\n`;
-    });
+    const { header, rows: bodyRows } = buildWideExportRows();
+    let csv = header.join(',') + '\n';
+    bodyRows.forEach(row => { csv += row.join(',') + '\n'; });
     const periodLabel = currentPeriod ? currentPeriod.label : new Date().toISOString().slice(0,10);
     const filename = (currentPreset ? currentPreset.name : '검침') + '_' + periodLabel + '.csv';
     await saveExportedFile(filename, "\uFEFF"+csv, 'text/csv;charset=utf-8;', true);
