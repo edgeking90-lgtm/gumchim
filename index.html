@@ -360,6 +360,25 @@
     overflow-y:auto;
   }
   #site-status-panel.show{ display:block; }
+  /* 회차(period) 패널 — records-panel/site-status-panel과 완전히 동일한 오버레이 패턴. */
+  #period-panel{
+    display:none; position:fixed; inset:0; z-index:30; background:var(--ink);
+    padding:calc(env(safe-area-inset-top) + 14px) 14px calc(env(safe-area-inset-bottom) + 14px);
+    overflow-y:auto;
+  }
+  #period-panel.show{ display:block; }
+  .period-item{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px; border:1px solid var(--line); border-radius:10px; margin-bottom:8px;
+  }
+  .period-item.active{ border-color:var(--teal); }
+  .period-item .pi-label{ font-size:16px; font-weight:700; color:var(--paper); }
+  .period-item .pi-meta{ font-size:12px; color:var(--muted); margin-top:3px; }
+  .period-item .pi-badge{
+    font-size:11px; font-weight:700; padding:3px 8px; border-radius:999px;
+    background:var(--line); color:var(--muted);
+  }
+  .period-item.active .pi-badge{ background:var(--teal); color:#04211d; }
   .site-status-summary{
     font-size:13px; color:var(--muted); margin-bottom:14px; line-height:1.6;
   }
@@ -734,6 +753,7 @@
   <div class="topbar" id="topbar" style="display:none;">
     <div class="dong"><span id="topbar-dong">현장</span><button class="btn-switch-site" id="btn-switch-site" type="button">현장 변경</button></div>
     <div style="display:flex; align-items:center; gap:8px;">
+      <button class="btn-switch-site" id="btn-open-period-panel" type="button">회차</button>
       <button class="btn-switch-site" id="btn-open-sitestatus" type="button">현황</button>
       <button class="btn-switch-site" id="btn-open-records" type="button">기록</button>
       <div class="progress" id="progress">0 / 0</div>
@@ -1004,6 +1024,29 @@
   <div id="site-status-body"></div>
 </div>
 
+<!-- 회차(period) 패널 — records-panel/site-status-panel과 같은 오버레이 패턴.
+     "현재 검침 중"인 회차와 "조회만" 가능한 과거 회차를 목록에서 전환한다.
+     activePeriodId는 여기서 "새 회차 만들기"를 눌렀을 때만 바뀐다. -->
+<div id="period-panel">
+  <div class="records-head">
+    <h1>회차</h1>
+    <button class="btn-close-records" id="btn-close-period-panel">닫기</button>
+  </div>
+  <div id="period-list"></div>
+
+  <div id="new-period-form" style="display:none; margin-top:10px; padding:14px; border:1px solid var(--line); border-radius:10px;">
+    <div style="font-size:13px; color:var(--muted); margin-bottom:8px;">새 회차 (YYYY-MM)</div>
+    <input type="text" id="new-period-label-input" placeholder="2026-10"
+      style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--paper); font-size:15px;">
+    <div id="new-period-warning" style="display:none; color:var(--warm); font-size:12px; margin-top:8px;"></div>
+    <div class="btn-row-office" style="margin-top:10px;">
+      <button class="btn-copy-office" id="btn-new-period-cancel" style="flex:1;">취소</button>
+      <button class="btn-copy-office" id="btn-new-period-confirm" style="flex:1;">이 회차로 시작</button>
+    </div>
+  </div>
+  <button class="btn-copy-office" id="btn-new-period" style="width:100%; margin-top:10px;">+ 새 회차 만들기</button>
+</div>
+
 <!-- 세대 상세 — 읽기 전용. keypad-overlay/copy-summary-body 스타일을 그대로 재사용 -->
 <div class="keypad-overlay" id="unit-detail-overlay">
   <div class="keypad-sheet">
@@ -1027,6 +1070,7 @@
   </div>
 </div>
 
+<script src="./gumchimDb.js"></script>
 <script>
 // =====================================================================
 // [DIAGNOSTIC BUILD] 백그라운드/포그라운드 복귀 성능 원인 조사용 임시 계측.
@@ -1094,294 +1138,21 @@ window.addEventListener('offline', () => document.getElementById('offline-badge'
 if (!navigator.onLine) document.getElementById('offline-badge').classList.add('show');
 
 // =====================================================================
-// 1. IndexedDB — 기기에 영구 저장 (새로고침/오프라인에도 데이터 유지)
-//    원칙: "서버를 믿지 않는다. 먼저 기기에 저장한다."
-//
-//    v3부터는 여러 현장(Preset)을 지원한다.
-//    - presets: 현장 구조 (어떤 호수가 있고, 무엇을 몇 개 검침하는지)
-//    - entries: 실제 검침 기록. 이제 presetId로 현장을 구분한다.
-//
-//    마이그레이션 원칙: v2까지 쌓인 기록은 전부 202동 검침이었으므로,
-//    버리지 않고 "내장 202동 프리셋"에 자동으로 귀속시킨다.
+// 1. IndexedDB — 실제 구현은 gumchimDb.js(v7)에 있다(위에서 <script>로 이미 로드).
+//    분리 이유: xlsx 로직을 별도 모듈로 뺀 것과 같음 — Node(fake-indexeddb)로
+//    마이그레이션을 자동 테스트할 수 있게 하기 위함. 여기서는 기존 코드 전체가
+//    바뀐 이름 없이 그대로 동작하도록 이름만 그대로 가져온다.
 // =====================================================================
-const DB_NAME = 'gumchim-db';
-const DB_VERSION = 6;
-const STORE = 'entries';
-const PRESET_STORE = 'presets';
-const PHOTO_STORE = 'photos';
-const OUTPUT_MAPPING_STORE = 'outputMappings';
-const ORIGINAL_FILE_STORE = 'originalFiles';
-const BUILTIN_202_PRESET_ID = 'builtin-202-water';
-let db = null;
-
-// 기존 202동 하드코딩과 완전히 동일한 순서로 만든 내장 프리셋.
-// (unit-major, meter-type-minor로 펼쳤을 때 예전 buildSequence()와 byte-equivalent —
-//  이 동등성은 별도 회귀 테스트로 검증되어 있다.)
-function buildBuiltin202Preset(){
-  const units = [];
-  // 임시 샘플 데이터 — 동선/이전값 비교 UI를 실기에서 확인해보기 위한 테스트용.
-  // 2008/2007/2006/2005호에만 넣어두고 나머지는 비워둬서, history가 없을 때
-  // "비교 데이터 없음"으로 정상 처리되는지도 같이 확인할 수 있게 했다.
-  const sampleHistory = {
-    '2008': { '냉수': { previousReading: 980,  averageUsage: 15, sampleCount: 6 },
-              '온수': { previousReading: 640,  averageUsage: 10, sampleCount: 6 } },
-    '2007': { '냉수': { previousReading: 1100, averageUsage: 22, sampleCount: 6 },
-              '온수': { previousReading: 720,  averageUsage: 18, sampleCount: 6 } },
-    '2006': { '냉수': { previousReading: 1450, averageUsage: 25, sampleCount: 6 },
-              '온수': { previousReading: 1206, averageUsage: 28, sampleCount: 6 } },
-    '2005': { '냉수': { previousReading: 890,  averageUsage: 12, sampleCount: 5 },
-              '온수': { previousReading: 560,  averageUsage: 9,  sampleCount: 5 } }
-  };
-  for(let floor=20; floor>=1; floor--){
-    for(let unit=8; unit>=1; unit--){
-      const ho = String(floor) + String(unit).padStart(2, '0');
-      const u = { ho, floor: floor, unit: unit };
-      if(sampleHistory[ho]) u.history = sampleHistory[ho];
-      units.push(u);
-    }
-  }
-  return {
-    id: BUILTIN_202_PRESET_ID,
-    name: '202동 수도',
-    dong: '202동',
-    meterTypes: ['냉수', '온수'],
-    floorOrder: 'desc',
-    unitOrderWithinFloor: 'desc',
-    units: units,
-    builtin: true,
-    createdAt: new Date().toISOString()
-  };
-}
-
-function dbKeyFor(presetId, ho, type){ return presetId + '_' + ho + '_' + type; }
-
-function openDB(){
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const _db = e.target.result;
-      const tx = e.target.transaction;
-      const oldVersion = e.oldVersion;
-
-      // presets 스토어 — 없으면 새로 만들고, 내장 202동 프리셋을 반드시 보장한다.
-      let presetStore;
-      if(!_db.objectStoreNames.contains(PRESET_STORE)){
-        presetStore = _db.createObjectStore(PRESET_STORE, { keyPath: 'id' });
-      } else {
-        presetStore = tx.objectStore(PRESET_STORE);
-      }
-      presetStore.get(BUILTIN_202_PRESET_ID).onsuccess = (ev) => {
-        if(!ev.target.result){
-          presetStore.add(buildBuiltin202Preset());
-        }
-      };
-
-      // entries 재생성 + (필요시) v2 데이터 이관
-      // 주의: STORE가 이미 v3 스키마(presetId 포함)로 존재한다면 절대 다시 만들지 않는다 —
-      // v3 -> v4 업그레이드 같은 "관련 없는 스토어 추가" 상황에서 entries를 불필요하게 건드리면 안 된다.
-      const rebuildEntriesStore = (recordsToMigrate) => {
-        if(_db.objectStoreNames.contains(STORE)){
-          _db.deleteObjectStore(STORE);
-        }
-        const newStore = _db.createObjectStore(STORE, { keyPath: 'key' });
-        newStore.createIndex('by_time', 'time');
-        newStore.createIndex('by_preset', 'presetId');
-        (recordsToMigrate || []).forEach(rec => {
-          // v2 기록은 presetId 개념이 없었지만, 전부 202동 검침이었으므로
-          // 내장 202동 프리셋에 귀속시켜 살린다. 데이터를 버리지 않는다.
-          const presetId = BUILTIN_202_PRESET_ID;
-          newStore.add({
-            key: dbKeyFor(presetId, rec.ho, rec.type),
-            presetId: presetId,
-            ho: rec.ho,
-            type: rec.type,
-            value: rec.value,
-            time: rec.time
-          });
-        });
-      };
-
-      if(!_db.objectStoreNames.contains(STORE)){
-        // entries 자체가 아예 없는 경우 (신규 설치, 또는 v2에서 아직 한 번도 안 만든 경우)
-        rebuildEntriesStore([]);
-      } else if(oldVersion < 3){
-        // v2 스키마(presetId 없음)에서 올라오는 경우에만 이관한다.
-        const oldStore = tx.objectStore(STORE);
-        const getAllReq = oldStore.getAll();
-        getAllReq.onsuccess = () => {
-          const alreadyMigrated = getAllReq.result.length > 0 && getAllReq.result[0].presetId !== undefined;
-          if(alreadyMigrated){
-            // 이미 v3 형태 — 손대지 않는다 (안전망)
-            return;
-          }
-          rebuildEntriesStore(getAllReq.result);
-        };
-      }
-      // oldVersion >= 3이면 entries는 이미 presetId 스키마 — 그대로 둔다.
-
-      // photos 스토어 — v4에서 신규 추가. 검침 사진을 entry와 같은 key로 연결한다.
-      // 주의: 이번 단계는 "캡처가 가능하고 entry와 연결될 수 있는 구조"까지만 만든다.
-      // 보관 기간/용량 제한 같은 정책은 아직 정하지 않았으므로 여기서 임의로 만들지 않는다.
-      if(!_db.objectStoreNames.contains(PHOTO_STORE)){
-        _db.createObjectStore(PHOTO_STORE, { keyPath: 'key' });
-      }
-
-      // outputMappings 스토어 — v5에서 신규 추가.
-      // Field Order(Preset/Sequence, 현장에서 일하기 편한 순서)와
-      // Output Order(사무실 붙여넣기 순서)는 절대 같은 데이터가 아니다.
-      // 그래서 presets/entries와 완전히 분리된 별도 스토어로 둔다.
-      // presetId당 1개로 제한하지 않는다 — 한 현장에 사무실 양식이 여러 개일 수 있다(부과용/검토용 등).
-      if(!_db.objectStoreNames.contains(OUTPUT_MAPPING_STORE)){
-        const omStore = _db.createObjectStore(OUTPUT_MAPPING_STORE, { keyPath: 'id' });
-        omStore.createIndex('by_preset_mapping', 'presetId');
-      }
-
-      // originalFiles 스토어 — v6에서 신규 추가.
-      // "원본 양식으로 결과 만들기" 기능이 쓸, 사무실이 올린 원본 엑셀 파일(Blob) 그대로를 담는다.
-      // outputMappings와 완전히 분리된 스토어다 — 매핑(JSON)과 원본 파일(Blob)은 별개의 것이고,
-      // 이 스토어에 있는 파일은 Export 시점에 "읽기 전용 원본"으로만 쓰인다. 절대 이 스토어에
-      // 다시 쓰지 않는다(결과 파일은 항상 다운로드로만 나가고 여기 저장되지 않는다).
-      if(!_db.objectStoreNames.contains(ORIGINAL_FILE_STORE)){
-        _db.createObjectStore(ORIGINAL_FILE_STORE, { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbAdd(entry){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    const store = tx.objectStore(STORE);
-    // add()는 같은 key가 이미 있으면 ConstraintError로 실패한다.
-    // 이게 "한 검침항목당 하나의 확정값"이라는 제약의 마지막 방어선이다.
-    const req = store.add(entry);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => { e.preventDefault(); reject(e.target.error); };
-  });
-}
-
-function dbGetAll(){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const store = tx.objectStore(STORE);
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-// 특정 현장(presetId)의 기록만 가져온다. 다른 현장의 데이터는 아예 건드리지 않는다.
-function dbGetEntriesForPreset(presetId){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const store = tx.objectStore(STORE);
-    const idx = store.index('by_preset');
-    const req = idx.getAll(IDBKeyRange.only(presetId));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbDelete(key){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    const store = tx.objectStore(STORE);
-    const req = store.delete(key);
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbGetAllPresets(){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PRESET_STORE, 'readonly');
-    const store = tx.objectStore(PRESET_STORE);
-    const req = store.getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbSavePreset(preset){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PRESET_STORE, 'readwrite');
-    const store = tx.objectStore(PRESET_STORE);
-    const req = store.put(preset); // put: 같은 id면 덮어씀 (재import 허용)
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-// 검침 사진 저장 — entry와 동일한 key로 연결한다 (한 검침항목당 사진 최대 1장).
-// 보관 기간/용량 제한 정책은 아직 없다: 이번 단계는 "캡처 → entry와 연결" 구조까지만.
-// 사진 저장이 실패해도 검침값 저장에는 영향이 없어야 하므로, 호출부에서 항상 별도로 감싸 쓴다.
-function dbSavePhoto(key, presetId, dataUrl){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, 'readwrite');
-    const store = tx.objectStore(PHOTO_STORE);
-    const req = store.put({ key, presetId, dataUrl, time: new Date().toISOString() });
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbGetPhoto(key){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(PHOTO_STORE, 'readonly');
-    const store = tx.objectStore(PHOTO_STORE);
-    const req = store.get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-// Output Mapping — "사무실에 어떤 순서/모양으로 붙여넣을지"만 담는다.
-// 절대 검침 순서(Sequence)로 쓰지 않는다. 한 현장(presetId)에 여러 개 있을 수 있다.
-function dbSaveOutputMapping(mapping){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(OUTPUT_MAPPING_STORE, 'readwrite');
-    const store = tx.objectStore(OUTPUT_MAPPING_STORE);
-    const req = store.put(mapping); // put: 같은 id면 덮어씀 (재import 허용)
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbGetOutputMappingsForPreset(presetId){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(OUTPUT_MAPPING_STORE, 'readonly');
-    const store = tx.objectStore(OUTPUT_MAPPING_STORE);
-    const idx = store.index('by_preset_mapping');
-    const req = idx.getAll(IDBKeyRange.only(presetId));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-// 원본 엑셀 파일 — "원본 양식으로 결과 만들기"가 읽기 전용으로만 쓰는 Blob.
-// key는 그 파일이 속한 outputMapping의 id를 그대로 쓴다(매핑 하나당 원본 파일 하나).
-// 이 스토어는 절대 쓰기(overwrite) 대상이 아니다 — Export는 항상 별도 다운로드로 나간다.
-function dbSaveOriginalFile(outputMappingId, name, type, blob){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(ORIGINAL_FILE_STORE, 'readwrite');
-    const store = tx.objectStore(ORIGINAL_FILE_STORE);
-    const req = store.put({ key: outputMappingId, name, type, blob, time: new Date().toISOString() });
-    req.onsuccess = () => resolve();
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
-
-function dbGetOriginalFile(outputMappingId){
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(ORIGINAL_FILE_STORE, 'readonly');
-    const store = tx.objectStore(ORIGINAL_FILE_STORE);
-    const req = store.get(outputMappingId);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = (e) => reject(e.target.error);
-  });
-}
+const {
+  DB_NAME, DB_VERSION, STORE, PRESET_STORE, PHOTO_STORE,
+  OUTPUT_MAPPING_STORE, ORIGINAL_FILE_STORE, PERIOD_STORE, BUILTIN_202_PRESET_ID,
+  slugify, presetIdFromStructure, isValidPeriodLabel, periodIdFor, dbKeyFor,
+  comparePeriodLabels, findPreviousPeriod, nextPeriodLabel, buildBuiltin202Preset,
+  openDB, dbAdd, dbGetAll, dbGetEntriesForPreset, dbGetEntriesForPeriod, dbDelete,
+  dbGetAllPresets, dbSavePreset, dbSavePeriod, dbGetPeriodsForPreset, dbGetPeriod,
+  dbSavePhoto, dbGetPhoto, dbSaveOutputMapping, dbGetOutputMappingsForPreset,
+  dbSaveOriginalFile, dbGetOriginalFile
+} = GumchimDb;
 
 // =====================================================================
 // 2. 검침 순서 — 이제 하드코딩이 아니라 선택된 Preset에서 만든다.
@@ -1435,11 +1206,23 @@ function meterTypeClass(type){
 }
 
 let currentPreset = null;
+// currentPeriod: 지금 화면에 표시 중인 회차("조회" 대상). activePeriodId(preset에 저장,
+// 실제로 신규 검침이 들어가는 회차)와는 완전히 별개 개념이다 — 과거 회차를 열람해도
+// activePeriodId는 절대 안 바뀐다. 쓰기(확정/삭제)는 반드시 isViewingActivePeriod()로
+// 지금 보고 있는 회차가 활성 회차와 같은지 먼저 확인한다.
+let currentPeriod = null;
+// 전월 지침 조회용 캐시 — "호수_종류" -> 직전 회차 확정값. selectPreset()/새 회차
+// 진입 시 한 번만 계산해서 getCurrentUnitHistory()가 매번 동기적으로 쓸 수 있게 한다.
+let previousPeriodEntryLookup = {};
 let SEQUENCE = [];
 let idx = 0;
 let staged = '';
 let log = [];
 let currentItem = null; // SEQUENCE[idx] — 동선 스트립/이전값 비교가 공유해서 참조
+
+function isViewingActivePeriod(){
+  return !!(currentPreset && currentPeriod && currentPreset.activePeriodId === currentPeriod.id);
+}
 
 const hoLabel = document.getElementById('ho-label');
 const typeLabel = document.getElementById('type-label');
@@ -1585,11 +1368,24 @@ function reviewReasonsText(reasons){
   return reasons.map(r => REVIEW_REASON_LABELS[r] || r).join(', ');
 }
 
+// 직전 회차의 확정값(previousPeriodEntryLookup, selectPreset()에서 미리 계산해둠)이
+// 있으면 그걸 "이전 지침"으로 쓰고, averageUsage/sampleCount는 그대로 preset.units의
+// 정적 시드값을 함께 보여준다. 직전 회차 값이 없으면(첫 회차 등) 기존처럼 정적 필드로만.
 function getCurrentUnitHistory(){
   if(!currentPreset || !currentItem) return null;
   const unit = (currentPreset.units || []).find(u => u.ho === currentItem.ho);
-  if(!unit || !unit.history) return null;
-  return unit.history[currentItem.type] || null;
+  const staticHist = (unit && unit.history) ? (unit.history[currentItem.type] || null) : null;
+
+  const prevValue = previousPeriodEntryLookup[currentItem.ho + '_' + currentItem.type];
+  if(prevValue !== undefined){
+    const prevNum = parseInt(prevValue, 10);
+    return {
+      previousReading: isNaN(prevNum) ? prevValue : prevNum,
+      averageUsage: staticHist ? staticHist.averageUsage : undefined,
+      sampleCount: staticHist ? staticHist.sampleCount : undefined
+    };
+  }
+  return staticHist;
 }
 
 // 편차는 판정기가 아니라 사실 표시다 — 임의의 이상/주의 임계값은 만들지 않는다.
@@ -1798,6 +1594,7 @@ async function runOCR(frameDataUrl){
 
 function renderLog(){
   logCount.textContent = log.length;
+  const canEdit = isViewingActivePeriod();
   if(log.length === 0){
     logList.innerHTML = '<div class="log-empty">아직 기록이 없습니다</div>';
     return;
@@ -1816,7 +1613,7 @@ function renderLog(){
       <div class="li-left">
         <span class="li-val">${item.value}</span>
         <button class="li-photo" data-key="${item.key}">사진</button>
-        <button class="li-del" data-key="${item.key}">삭제</button>
+        ${canEdit ? `<button class="li-del" data-key="${item.key}">삭제</button>` : ''}
       </div>
       ${item.needsReview && item.reviewReasons && item.reviewReasons.length > 0
         ? '<div class="li-review-reason">사유: ' + reviewReasonsText(item.reviewReasons) + '</div>'
@@ -1826,6 +1623,10 @@ function renderLog(){
   }
   logList.querySelectorAll('.li-del').forEach(b=>{
     b.addEventListener('click', async (e)=>{
+      if(!isViewingActivePeriod()){
+        alert('과거 회차는 삭제할 수 없습니다.');
+        return;
+      }
       const key = e.target.getAttribute('data-key');
       const item = log.find(x => x.key === key);
       const label = item ? (item.ho + '호 ' + item.type) : '이 항목';
@@ -1858,11 +1659,16 @@ let saving = false; // 오케이 연타/음성 중복 인식으로 같은 항목
 async function confirmCurrent(){
   if(saving) return;
   if(staged === '' || idx >= SEQUENCE.length) return;
+  // 과거 회차는 조회 전용 — 활성 회차가 아닌 화면에서는 절대 새로 확정하지 않는다.
+  if(!isViewingActivePeriod()){
+    alert('과거 회차는 조회만 가능합니다. 새 검침은 현재 회차에서 입력해주세요.');
+    return;
+  }
   saving = true;
   btnOk.disabled = true;
   try{
     const cur = SEQUENCE[idx];
-    const entryKeyStr = dbKeyFor(currentPreset.id, cur.ho, cur.type);
+    const entryKeyStr = dbKeyFor(currentPreset.id, currentPeriod.id, cur.ho, cur.type);
     // 확정 당시의 검토 필요 상태를 메타데이터로 남긴다 — 저장되는 값(staged) 자체는 절대 안 바뀐다.
     // 사유는 여러 개가 동시에 해당될 수 있어서 배열로 모은다(예: OCR 불일치 + 사용량 마이너스가
     // 동시에 뜰 수도 있음). needsReview는 여전히 boolean이라 기존에 이걸 쓰던 곳들
@@ -1884,6 +1690,7 @@ async function confirmCurrent(){
     const entry = {
       key: entryKeyStr,
       presetId: currentPreset.id,
+      periodId: currentPeriod.id,
       ho: cur.ho, type: cur.type, value: staged, time: new Date().toISOString(),
       needsReview: reviewReasons.length > 0,
       reviewReasons: reviewReasons
@@ -2073,7 +1880,8 @@ btnExportXlsx.addEventListener('click', async ()=>{
     exportLog('XLSX write start');
     const arrayBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
     exportLog('XLSX buffer OK', { bytes: arrayBuffer.byteLength });
-    const filename = (currentPreset ? currentPreset.name : '검침') + '_' + new Date().toISOString().slice(0,10) + '.xlsx';
+    const periodLabel = currentPeriod ? currentPeriod.label : new Date().toISOString().slice(0,10);
+    const filename = (currentPreset ? currentPreset.name : '검침') + '_' + periodLabel + '.xlsx';
     await saveExportedFile(filename, arrayBuffer, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', false);
   }catch(err){
     exportLogError('xlsx-export', err);
@@ -2097,7 +1905,8 @@ btnExport.addEventListener('click', async ()=>{
     log.forEach(item=>{
       csv += `${dongLabel},${item.ho},${item.type},${item.value},${item.time}\n`;
     });
-    const filename = (currentPreset ? currentPreset.name : '검침') + '_' + new Date().toISOString().slice(0,10) + '.csv';
+    const periodLabel = currentPeriod ? currentPeriod.label : new Date().toISOString().slice(0,10);
+    const filename = (currentPreset ? currentPreset.name : '검침') + '_' + periodLabel + '.csv';
     await saveExportedFile(filename, "\uFEFF"+csv, 'text/csv;charset=utf-8;', true);
   }catch(err){
     exportLogError('csv-export', err);
@@ -2565,7 +2374,7 @@ function captureFrame(){
 // dbSavePhoto()가 이미 put(덮어쓰기) 방식이라 별도 처리가 필요 없다.
 const btnManualCapture = document.getElementById('btn-manual-capture');
 btnManualCapture.addEventListener('click', async () => {
-  if(!currentPreset || !currentItem){ return; }
+  if(!currentPreset || !currentItem || !isViewingActivePeriod()){ return; }
   const frame = captureFrame();
   if(!frame){
     const original = btnManualCapture.textContent;
@@ -2573,7 +2382,7 @@ btnManualCapture.addEventListener('click', async () => {
     setTimeout(() => { btnManualCapture.textContent = original; }, 1200);
     return;
   }
-  const key = dbKeyFor(currentPreset.id, currentItem.ho, currentItem.type);
+  const key = dbKeyFor(currentPreset.id, currentPeriod.id, currentItem.ho, currentItem.type);
   try{
     await dbSavePhoto(key, currentPreset.id, frame);
     const original = btnManualCapture.textContent;
@@ -2873,19 +2682,15 @@ const presetListEl = document.getElementById('preset-list');
 const btnSwitchSite = document.getElementById('btn-switch-site');
 const presetImportInput = document.getElementById('preset-import-input');
 
-function slugify(s){
-  return (s || '').toString().trim().replace(/[^a-zA-Z0-9가-힣]+/g, '-').replace(/^-+|-+$/g, '');
-}
+// slugify/presetIdFromStructure는 GumchimDb에서 그대로 가져와 쓴다(위 destructure) —
+// 실기기에 이미 저장된 presetId와 byte-identical해야 하므로 두 곳에 따로 두지 않는다.
 
-// 같은 PC 구조 파일(같은 동 + 같은 검침항목)을 다시 불러오면 새 현장이 아니라
-// 같은 현장을 갱신하도록 결정적 id를 쓴다. (진행 기록을 잃지 않기 위함)
-function presetIdFromStructure(s){
-  return 'site-' + slugify(s.dong) + '-' + slugify((s.meterTypes || []).join('-'));
-}
-
+// 홈 화면 진행률은 항상 "활성 회차"만 기준으로 한다 — 지난 회차까지 합쳐서 세면
+// 10월 회차를 새로 만든 순간 "이미 320/320 완료"처럼 보이는 착시가 생긴다.
 async function presetProgress(preset){
-  const entries = await dbGetEntriesForPreset(preset.id);
   const total = preset.units.length * preset.meterTypes.length;
+  if(!preset.activePeriodId) return { done: 0, total };
+  const entries = await dbGetEntriesForPeriod(preset.id, preset.activePeriodId);
   return { done: entries.length, total };
 }
 
@@ -3046,14 +2851,19 @@ async function renderPresetList(){
   const infoList = [];
 
   for(const preset of presets){
-    const { done, total } = await presetProgress(preset); // 기존 함수 그대로 재사용
-    const entries = await dbGetEntriesForPreset(preset.id); // 기존 함수 그대로 재사용
+    const total = preset.units.length * preset.meterTypes.length;
+    let entries = [];
+    let activePeriod = null;
+    if(preset.activePeriodId){
+      entries = await dbGetEntriesForPeriod(preset.id, preset.activePeriodId);
+      activePeriod = await dbGetPeriod(preset.activePeriodId);
+    }
+    const done = entries.length;
     infoList.push({ preset, done, total, entries });
-    if(entries.length > 0){
-      const lastTime = entries.reduce((m, e) => (e.time > m ? e.time : m), entries[0].time);
-      if(!mostRecent || lastTime > mostRecent.lastTime){
-        mostRecent = { preset, done, total, entries, lastTime };
-      }
+    // "오늘의 현장" 후보 — 활성 회차가 가장 최근에 만들어진 프리셋을 주인공으로 보여준다.
+    // entries가 아직 0건이어도(방금 새 회차를 만든 직후) 그게 "지금 할 일"이므로 포함한다.
+    if(activePeriod && (!mostRecent || activePeriod.createdAt > mostRecent.periodCreatedAt)){
+      mostRecent = { preset, done, total, entries, periodCreatedAt: activePeriod.createdAt };
     }
   }
 
@@ -3061,14 +2871,46 @@ async function renderPresetList(){
   renderOtherSitesList(infoList, mostRecent ? mostRecent.preset.id : null);
 }
 
-async function selectPreset(preset){
-  currentPreset = preset;
-  SEQUENCE = buildSequenceFromPreset(preset);
-  log = await dbGetEntriesForPreset(preset.id);
-  log.sort((a,b) => a.time.localeCompare(b.time));
+// 직전 회차(currentPeriod.label보다 바로 이전 label)의 확정값을 "호수_종류" 맵으로
+// 미리 캐시해둔다 — getCurrentUnitHistory()가 매 렌더마다 동기적으로 쓸 수 있게.
+async function loadPreviousPeriodLookup(){
+  previousPeriodEntryLookup = {};
+  if(!currentPreset || !currentPeriod) return;
+  const periods = await dbGetPeriodsForPreset(currentPreset.id);
+  const prev = findPreviousPeriod(periods, currentPeriod.label);
+  if(!prev) return;
+  const prevEntries = await dbGetEntriesForPeriod(currentPreset.id, prev.id);
+  prevEntries.forEach(e => { previousPeriodEntryLookup[e.ho + '_' + e.type] = e.value; });
+}
 
-  topbarDong.textContent = preset.name;
-  document.title = preset.name + ' 검침';
+// periodId를 생략하면 preset.activePeriodId(=지금 검침을 입력할 회차)로 들어간다.
+// 과거 회차를 "조회"만 하고 싶을 때는 openPeriodForViewing()을 쓴다(아래).
+async function selectPreset(preset, periodId){
+  currentPreset = preset;
+  const targetPeriodId = periodId || preset.activePeriodId;
+
+  if(!targetPeriodId){
+    // 이 현장은 아직 회차가 하나도 없다(신규 등록 직후) — 검침을 시작하려면
+    // 먼저 회차를 만들어야 한다. 입력 화면으로 들어가는 대신 회차 패널을 연다.
+    siteSelectScreen.classList.add('hidden');
+    siteContent.classList.remove('show');
+    bottomNav.classList.remove('show');
+    topbarEl.style.display = 'flex';
+    topbarDong.textContent = preset.name;
+    document.title = preset.name + ' 검침';
+    await openPeriodPanel();
+    alert('아직 검침 회차가 없습니다. 먼저 "새 회차 만들기"로 회차를 만들어주세요.');
+    return;
+  }
+
+  currentPeriod = await dbGetPeriod(targetPeriodId);
+  SEQUENCE = buildSequenceFromPreset(preset);
+  log = await dbGetEntriesForPeriod(preset.id, currentPeriod.id);
+  log.sort((a,b) => a.time.localeCompare(b.time));
+  await loadPreviousPeriodLookup();
+
+  topbarDong.textContent = preset.name + ' · ' + currentPeriod.label;
+  document.title = preset.name + ' ' + currentPeriod.label + ' 검침';
 
   siteSelectScreen.classList.add('hidden');
   siteContent.classList.add('show');
@@ -3080,6 +2922,9 @@ async function selectPreset(preset){
   renderLog();
   renderCurrent();
   updateRouteOrderUi();
+
+  // 과거 회차를 조회 중일 때는 신규 입력이 불가능하므로 카메라를 새로 켤 필요가 없다.
+  if(!isViewingActivePeriod()) return;
 
   // 권한 게이트를 건너뛴 경우 startCamera()가 아직 한 번도 호출 안 됐을 수 있다.
   // 그 상태로 두면 "카메라 준비 중…" 문구가 영원히 안 바뀌므로, 현장에 들어올 때
@@ -3305,9 +3150,10 @@ function renderSiteStatusPanel(){
   const reviewCount = log.filter(e => e.needsReview).length;
   const summaryEl = document.getElementById('site-status-summary');
   summaryEl.innerHTML =
-    '<b>' + (currentPreset ? currentPreset.name : '-') + '</b> · ' +
+    '<b>' + (currentPreset ? currentPreset.name : '-') + (currentPeriod ? ' · ' + currentPeriod.label : '') + '</b> · ' +
     (idx >= SEQUENCE.length ? '완료' : (idx + 1) + ' / ' + SEQUENCE.length) +
-    (reviewCount > 0 ? ' · <span class="warn">확인 필요 ' + reviewCount + '건</span>' : ' · 확인 필요 0건');
+    (reviewCount > 0 ? ' · <span class="warn">확인 필요 ' + reviewCount + '건</span>' : ' · 확인 필요 0건') +
+    (!isViewingActivePeriod() ? ' · <span class="warn">조회 전용(과거 회차)</span>' : '');
 
   const body = document.getElementById('site-status-body');
   const doneSet = new Set(log.map(entryKey));
@@ -3410,6 +3256,103 @@ document.getElementById('site-status-body').addEventListener('click', (e) => {
 });
 document.getElementById('btn-unit-detail-close').addEventListener('click', () => {
   document.getElementById('unit-detail-overlay').classList.remove('show');
+});
+
+// =====================================================================
+// 회차(Period) 패널 — activePeriodId(쓰기 대상)와 currentPeriod(조회 대상)를
+// 분리해서 보여준다. 과거 회차를 눌러도 activePeriodId는 절대 안 바뀐다.
+// 네이티브 confirm()/prompt() 대신, 이 코드베이스의 다른 패널들과 같은 방식
+// (전용 오버레이 안의 입력/버튼)으로 만든다 — WebView에서 더 안정적이다.
+// =====================================================================
+const periodPanel = document.getElementById('period-panel');
+const periodListEl = document.getElementById('period-list');
+const btnOpenPeriodPanel = document.getElementById('btn-open-period-panel');
+const btnClosePeriodPanel = document.getElementById('btn-close-period-panel');
+const newPeriodForm = document.getElementById('new-period-form');
+const newPeriodLabelInput = document.getElementById('new-period-label-input');
+const newPeriodWarning = document.getElementById('new-period-warning');
+const btnNewPeriod = document.getElementById('btn-new-period');
+const btnNewPeriodCancel = document.getElementById('btn-new-period-cancel');
+const btnNewPeriodConfirm = document.getElementById('btn-new-period-confirm');
+
+async function openPeriodPanel(){
+  newPeriodForm.style.display = 'none';
+  await renderPeriodList();
+  periodPanel.classList.add('show');
+}
+
+async function renderPeriodList(){
+  periodListEl.innerHTML = '';
+  if(!currentPreset) return;
+  const periods = await dbGetPeriodsForPreset(currentPreset.id);
+  periods.sort((a, b) => comparePeriodLabels(b.label, a.label)); // 최신 회차 먼저
+  const total = currentPreset.units.length * currentPreset.meterTypes.length;
+  if(periods.length === 0){
+    periodListEl.innerHTML = '<div class="log-empty">아직 회차가 없습니다</div>';
+    return;
+  }
+  for(const period of periods){
+    const entries = await dbGetEntriesForPeriod(currentPreset.id, period.id);
+    const isActive = currentPreset.activePeriodId === period.id;
+    const item = document.createElement('div');
+    item.className = 'period-item' + (isActive ? ' active' : '');
+    item.innerHTML = `
+      <div>
+        <div class="pi-label">${period.label}</div>
+        <div class="pi-meta">${entries.length} / ${total} 완료</div>
+      </div>
+      <span class="pi-badge">${isActive ? '현재 검침' : '조회 전용'}</span>
+    `;
+    item.addEventListener('click', async () => {
+      periodPanel.classList.remove('show');
+      await selectPreset(currentPreset, period.id);
+    });
+    periodListEl.appendChild(item);
+  }
+}
+
+btnOpenPeriodPanel.addEventListener('click', openPeriodPanel);
+btnClosePeriodPanel.addEventListener('click', () => { periodPanel.classList.remove('show'); });
+
+btnNewPeriod.addEventListener('click', async () => {
+  if(!currentPreset) return;
+  const periods = await dbGetPeriodsForPreset(currentPreset.id);
+  periods.sort((a, b) => comparePeriodLabels(b.label, a.label));
+  const latest = periods[0] || null;
+  const suggested = latest ? nextPeriodLabel(latest.label) : new Date().toISOString().slice(0, 7);
+
+  newPeriodLabelInput.value = suggested;
+  newPeriodWarning.style.display = 'none';
+
+  // 직전 회차가 아직 안 끝났으면 화면에 경고를 보여준다(막지는 않는다 — 실제로
+  // 한 세대가 공실이라 영원히 100%가 안 되는 경우도 있을 수 있어서).
+  if(latest){
+    const total = currentPreset.units.length * currentPreset.meterTypes.length;
+    const entries = await dbGetEntriesForPeriod(currentPreset.id, latest.id);
+    if(entries.length < total){
+      newPeriodWarning.textContent = latest.label + ' 회차가 아직 ' + entries.length + ' / ' + total + '건만 완료됐습니다. 그래도 새 회차를 만들까요?';
+      newPeriodWarning.style.display = 'block';
+    }
+  }
+  newPeriodForm.style.display = 'block';
+});
+
+btnNewPeriodCancel.addEventListener('click', () => { newPeriodForm.style.display = 'none'; });
+
+btnNewPeriodConfirm.addEventListener('click', async () => {
+  const label = newPeriodLabelInput.value.trim();
+  if(!isValidPeriodLabel(label)){
+    alert('회차는 YYYY-MM 형식이어야 합니다 (예: 2026-10).');
+    return;
+  }
+  const periodId = periodIdFor(currentPreset.id, label);
+  await dbSavePeriod({ id: periodId, presetId: currentPreset.id, label, createdAt: new Date().toISOString() });
+  currentPreset.activePeriodId = periodId;
+  await dbSavePreset(currentPreset);
+
+  newPeriodForm.style.display = 'none';
+  periodPanel.classList.remove('show');
+  await selectPreset(currentPreset, periodId);
 });
 
 presetImportInput.addEventListener('change', async (e) => {
@@ -3711,7 +3654,7 @@ btnMakeOriginalFormat.addEventListener('click', async () => {
     const dotIdx = fileRecord.name.lastIndexOf('.');
     const base = dotIdx > 0 ? fileRecord.name.slice(0, dotIdx) : fileRecord.name;
     const ext = dotIdx > 0 ? fileRecord.name.slice(dotIdx) : '.xlsx';
-    const resultName = base + '_결과' + ext;
+    const resultName = base + '_결과_' + (currentPeriod ? currentPeriod.label : new Date().toISOString().slice(0,10)) + ext;
 
     exportLog('XLSX write start');
     exportLog('XLSX buffer OK', { bytes: resultArrayBuffer.byteLength });
@@ -3823,7 +3766,7 @@ if(isAndroidNative() && window.Capacitor.Plugins.App){
 (async function init(){
   diagLog('INIT', 'start'); // [DIAGNOSTIC BUILD]
   const __diagDbT0 = performance.now(); // [DIAGNOSTIC BUILD]
-  db = await openDB();
+  await openDB();
   diagLog('DB', 'openDB() ' + Math.round(performance.now() - __diagDbT0) + 'ms'); // [DIAGNOSTIC BUILD]
   await renderPresetList();
   setupRecognition();
