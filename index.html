@@ -1378,12 +1378,14 @@ function reviewReasonsText(reasons){
 // 직전 회차의 확정값(previousPeriodEntryLookup, selectPreset()에서 미리 계산해둠)이
 // 있으면 그걸 "이전 지침"으로 쓰고, averageUsage/sampleCount는 그대로 preset.units의
 // 정적 시드값을 함께 보여준다. 직전 회차 값이 없으면(첫 회차 등) 기존처럼 정적 필드로만.
-function getCurrentUnitHistory(){
-  if(!currentPreset || !currentItem) return null;
-  const unit = (currentPreset.units || []).find(u => u.ho === currentItem.ho);
-  const staticHist = (unit && unit.history) ? (unit.history[currentItem.type] || null) : null;
+// 검침 입력 화면(getCurrentUnitHistory)과 "현황" 세대 상세(openUnitDetail)가 이 함수
+// 하나를 같이 써야 한다 — 그래야 두 화면이 서로 다른 "이전 지침"을 보여줄 수 없다.
+function getUnitHistoryFor(ho, type){
+  if(!currentPreset) return null;
+  const unit = (currentPreset.units || []).find(u => u.ho === ho);
+  const staticHist = (unit && unit.history) ? (unit.history[type] || null) : null;
 
-  const prevValue = previousPeriodEntryLookup[currentItem.ho + '_' + currentItem.type];
+  const prevValue = previousPeriodEntryLookup[ho + '_' + type];
   if(prevValue !== undefined){
     const prevNum = parseInt(prevValue, 10);
     return {
@@ -1393,6 +1395,11 @@ function getCurrentUnitHistory(){
     };
   }
   return staticHist;
+}
+
+function getCurrentUnitHistory(){
+  if(!currentItem) return null;
+  return getUnitHistoryFor(currentItem.ho, currentItem.type);
 }
 
 // 편차는 판정기가 아니라 사실 표시다 — 임의의 이상/주의 임계값은 만들지 않는다.
@@ -3235,7 +3242,7 @@ function openUnitDetail(ho){
 
   let html = '';
   types.forEach(type => {
-    const hist = (unit.history && unit.history[type]) || null;
+    const hist = getUnitHistoryFor(ho, type);
     const entry = log.find(e => e.ho === ho && e.type === type);
     const isCurrent = currentItem && currentItem.ho === ho && currentItem.type === type;
     const currentReading = entry ? parseInt(entry.value, 10)
