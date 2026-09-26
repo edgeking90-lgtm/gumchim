@@ -170,6 +170,20 @@
           periodStore = tx.objectStore(PERIOD_STORE);
         }
 
+        // photos/outputMappings/originalFiles 스토어 — v4/v5/v6에서 이미 추가돼 있음.
+        // v7에서는 손대지 않는다(그대로 존재 보장만). entries 처리보다 먼저 실행해야 한다 —
+        // 신규 설치 경로(바로 아래)가 도중에 return하므로, 그 뒤에 두면 여기 도달을 못 한다.
+        if(!_db.objectStoreNames.contains(PHOTO_STORE)){
+          _db.createObjectStore(PHOTO_STORE, { keyPath: 'key' });
+        }
+        if(!_db.objectStoreNames.contains(OUTPUT_MAPPING_STORE)){
+          const omStore = _db.createObjectStore(OUTPUT_MAPPING_STORE, { keyPath: 'id' });
+          omStore.createIndex('by_preset_mapping', 'presetId');
+        }
+        if(!_db.objectStoreNames.contains(ORIGINAL_FILE_STORE)){
+          _db.createObjectStore(ORIGINAL_FILE_STORE, { keyPath: 'key' });
+        }
+
         // entries — 스토어가 아예 없으면(신규 설치) 바로 v7 모양으로 만든다.
         // 이미 있으면(v2~v6) periodId가 없는 레거시 기록을 전부 v7 모양으로 이관한다.
         const createV7EntriesStore = () => {
@@ -264,19 +278,6 @@
             };
           });
         };
-
-        // photos/outputMappings/originalFiles 스토어 — v4/v5/v6에서 이미 추가돼 있음.
-        // v7에서는 손대지 않는다(그대로 존재 보장만).
-        if(!_db.objectStoreNames.contains(PHOTO_STORE)){
-          _db.createObjectStore(PHOTO_STORE, { keyPath: 'key' });
-        }
-        if(!_db.objectStoreNames.contains(OUTPUT_MAPPING_STORE)){
-          const omStore = _db.createObjectStore(OUTPUT_MAPPING_STORE, { keyPath: 'id' });
-          omStore.createIndex('by_preset_mapping', 'presetId');
-        }
-        if(!_db.objectStoreNames.contains(ORIGINAL_FILE_STORE)){
-          _db.createObjectStore(ORIGINAL_FILE_STORE, { keyPath: 'key' });
-        }
       };
       req.onsuccess = (e) => { db = e.target.result; resolve(db); };
       req.onerror = (e) => reject(e.target.error);

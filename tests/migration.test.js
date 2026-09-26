@@ -113,6 +113,17 @@ test('신규 설치(entries 자체가 없음)는 마이그레이션 없이 깨�
   const builtin = presets.find(p => p.id === GumchimDb.BUILTIN_202_PRESET_ID);
   assert.ok(builtin, '내장 202동 프리셋은 신규 설치에도 항상 보장돼야 한다');
   assert.equal(builtin.activePeriodId, undefined);
+
+  // 회귀 테스트: entries가 없어서 onupgradeneeded가 신규 설치 분기에서 일찍 return하더라도
+  // photos/outputMappings/originalFiles 스토어는 반드시 같이 만들어져 있어야 한다.
+  // (실제로 이 return 때문에 세 스토어가 전혀 안 만들어지는 버그가 있었음 — 브라우저에서
+  // selectPreset() 중 dbGetOutputMappingsForPreset()가 NotFoundError로 실제로 재현됨)
+  const storeNames = Array.from(db.objectStoreNames);
+  assert.ok(storeNames.includes(GumchimDb.PHOTO_STORE), 'photos 스토어 누락');
+  assert.ok(storeNames.includes(GumchimDb.OUTPUT_MAPPING_STORE), 'outputMappings 스토어 누락');
+  assert.ok(storeNames.includes(GumchimDb.ORIGINAL_FILE_STORE), 'originalFiles 스토어 누락');
+  await assert.doesNotReject(GumchimDb.dbGetOutputMappingsForPreset(GumchimDb.BUILTIN_202_PRESET_ID));
+  await assert.doesNotReject(GumchimDb.dbGetPhoto('아무-key'));
 });
 
 test('presetId가 없는 아주 오래된(v2류) 레코드도 내장 202동 프리셋으로 안전하게 귀속된다', async (t) => {
